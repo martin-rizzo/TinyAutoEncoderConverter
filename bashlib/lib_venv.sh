@@ -1,41 +1,16 @@
 #!/usr/bin/env bash
-# File    : venv-manager.sh
-# Brief   : Utilities for managing Python virtual environments
+# File    : bashlib/lib_venv.sh
+# Purpose : Bash library for managing python virtual environments in small projects.
 # Author  : Martin Rizzo | <martinrizzo@gmail.com>
-# Date    : Sep 17, 2024
+# Date    : Nov 26, 2024
 # Repo    : https://github.com/martin-rizzo/PixArtToolkit
 # License : MIT
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#                                Safetensors Kit
-#     A set of simple commands to create, view, or analyze safetensors files
 #
-#     Copyright (c) 2024 Martin Rizzo
-#
-#     Permission is hereby granted, free of charge, to any person obtaining
-#     a copy of this software and associated documentation files (the
-#     "Software"), to deal in the Software without restriction, including
-#     without limitation the rights to use, copy, modify, merge, publish,
-#     distribute, sublicense, and/or sell copies of the Software, and to
-#     permit persons to whom the Software is furnished to do so, subject to
-#     the following conditions:
-#
-#     The above copyright notice and this permission notice shall be
-#     included in all copies or substantial portions of the Software.
-#
-#     THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-#     EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-#     MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-#     IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-#     CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-#     TORT OR OTHERWISE, ARISING FROM,OUT OF OR IN CONNECTION WITH THE
-#     SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
-#
-# FUNCTIONS:
-#  - is_venv_active        : Checks if the Python virtual environment is active.
-#  - require_venv          : Checks whether a given virtual environment exista y este bien configurado
-#  - ensure_venv_is_active : Ensures the specified Python virtual environment is active.
-#  - virtual_python        : Runs a command or Python script within the specified virtual environment.
+#  FUNCTIONS:
+#    - require_venv          : Checks whether a given virtual environment exists and is properly configured.
+#    - ensure_venv_is_active : Ensures the specified Python virtual environment is active.
+#    - virtual_python        : Runs a command or Python script within the specified virtual environment.
 #
 #-----------------------------------------------------------------------------
 
@@ -47,11 +22,9 @@ HLP__LAST_VENV=
 RED='\e[91m'
 GREEN='\e[92m'
 YELLOW='\e[93m'
-#BLUE='\e[94m'
-#PURPLE='\e[95m'
+MAGENTA='\e[95m'
 CYAN='\e[96m'
-DEFAULT_COLOR='\e[0m'
-
+RESET='\e[0m'
 
 # Display a regular message
 message() {
@@ -60,12 +33,17 @@ message() {
         echo >&2
         return
     fi
-    local prefix="  ${GREEN}>${DEFAULT_COLOR} "
+    if [[ "$format" == "---" ]]; then
+        # print a separator line
+        echo -e "${MAGENTA}=============================================================================${RESET}"
+        return
+    fi
+    local prefix="  ${GREEN}>${RESET} "
     local suffix=""
     case "$format" in
-        check) prefix="  ${GREEN}\xE2\x9C\x94 " ; suffix="${DEFAULT_COLOR}"    ; shift ;;
-        wait ) prefix="  ${YELLOW}* "           ; suffix="...${DEFAULT_COLOR}" ; shift ;;
-        info ) prefix="  ${CYAN}\xE2\x93\x98  " ; suffix="${DEFAULT_COLOR}"    ; shift ;;
+        check) prefix="  ${GREEN}\xE2\x9C\x94 " ; suffix="${RESET}"    ; shift ;;
+        wait ) prefix="  ${YELLOW}* "           ; suffix="...${RESET}" ; shift ;;
+        info ) prefix="  ${CYAN}\xE2\x93\x98  " ; suffix="${RESET}"    ; shift ;;
     esac
     echo -e -n "$prefix" >&2
     echo    -n "$@"      >&2
@@ -75,7 +53,7 @@ message() {
 # Display an error message
 error() {
     local message=$1
-    echo -e "${CYAN}[${RED}ERROR${CYAN}]${RED} $message${DEFAULT_COLOR}" >&2
+    echo -e "${CYAN}[${RED}ERROR${CYAN}]${RED} $message${RESET}" >&2
 }
 
 # Displays a fatal error message and exits the script with status code 1
@@ -87,37 +65,10 @@ fatal_error() {
     # print informational messages, if any were provided
     while [[ $# -gt 0 ]]; do
         local info_message=$1
-        echo -e " ${CYAN}\xF0\x9F\x9B\x88 $info_message${DEFAULT_COLOR}" >&2
+        echo -e " ${CYAN}\xF0\x9F\x9B\x88 $info_message${RESET}" >&2
         shift
     done
     exit 1
-}
-
-# Checks if the Python virtual environment is active.
-#
-# Usage:
-#   is_venv_active <venv>
-#
-# Parameters:
-#   - venv: the path to the virtual environment to check.
-#
-# Returns:
-#   - 0 if the specified virtual environment is active
-#   - 1 if no virtual environment is active
-#   - 2 if a different virtual environment is active
-#
-# Example:
-#   is_venv_active "/path/to/my-venv"
-#
-is_venv_active() {
-    local venv=$1
-    if [[ -z $VIRTUAL_ENV ]]; then
-        return 1 # NO ACTIVE #
-    fi
-    if [[ "$venv" != *"${VIRTUAL_ENV#\~}" ]]; then
-        return 2 # NO ACTIVE (otro venv esta activo) #
-    fi
-    return 0 # ACTIVE! #
 }
 
 # Checks whether a given virtual environment exists and is properly configured.
@@ -136,18 +87,6 @@ is_venv_active() {
 #   require_venv --quiet "/path/to/my-venv"
 #
 require_venv() {
-
-    # process all initial parameters that start with '-'
-    local quiet=false
-    while [[ "$1" =~ ^- ]]; do
-        case "$1" in
-        --quiet) quiet=true ;;
-        -)       shift ; break ;;
-        *)       fatal_error "require_venv does not support the parameter '$1'"  ;;
-        esac
-        shift
-    done
-
     local venv_prompt="venv"
     local venv=$1 python=${2:-python} requirements=$3
     local update=false
@@ -157,6 +96,8 @@ require_venv() {
 
     # if the venv does not exist, then create it
     if [[ ! -d $venv ]]; then
+        message
+        message ---
         message wait 'creating python virtual environment'
         message "'$python' -m venv '$venv' --prompt '$venv_prompt'"
         "$python" -m venv "$venv" --prompt "$venv_prompt"
@@ -167,16 +108,12 @@ require_venv() {
     # if the venv already exists but contains a different version of Python,
     # then try to delete it and recreate it with the compatible version
     elif [[ ! -e "$venv/bin/$python" ]]; then
-        $quiet || warning "a different version of python was selected ($python)"
-        $quiet || message wait "recreating virtual environment"
+        warning "a different version of python was selected ($python)"
+        message wait "recreating virtual environment"
         rm -Rf "$venv"
         "$python" -m venv "$venv" --prompt "$venv_prompt"
         update=true
-        $quiet || message check "virtual environment recreated for $python"
-
-    # if the venv exists and has the correct version of Python, do nothing!
-    else
-        $quiet || message check 'virtual environment exists'
+        message check "virtual environment recreated for $python"
     fi
 
     HLP__LAST_VENV=$venv
@@ -187,8 +124,9 @@ require_venv() {
         [[ $requirements ]] && message wait 'installing requirements.txt'
         [[ $requirements ]] && virtual_python "$VENV_DIR" !pip install -r "$requirements"
         [[ $requirements ]] && message check 'requirements.txt installed'
-        echo
-        echo
+        message ---
+        message
+        message
     fi
 }
 
@@ -217,22 +155,22 @@ ensure_venv_is_active() {
         esac
         shift
     done
-
     local venv=$1
 
-    if is_venv_active "$venv"; then
+    # verify if the virtual environment is already active
+    if [[ -n "$VIRTUAL_ENV" ]]; then
+        if [[ "$venv" != *"${VIRTUAL_ENV#\~}" ]]; then
+            fatal_error \
+                "function ensure_venv_is_active() is unable to switch between virtual environments" \
+                "This is an internal error likely caused by a mistake in the code"
+        fi
         $quiet || message check "virtual environment already activated"
         return
     fi
 
-    if [[ $? -eq 2 ]]; then
-        fatal_error \
-            "function ensure_venv_is_active() is unable to switch between virtual environments" \
-            "This is an internal error likely caused by a mistake in the code"
-    fi
-
+    # at this point the virtual environment is not active, so activate it
     $quiet || message wait 'activating virtual environment'
-    # shellcheck source=/dev/null
+    #shellcheck source=/dev/null
     source "$venv/bin/activate"
     $quiet || message check 'virtual environment activated'
 }
