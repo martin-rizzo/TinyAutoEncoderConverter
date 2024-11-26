@@ -1,65 +1,41 @@
-# TinyAutoEncoderConverter
+# Tiny AutoEncoder Converter
 
-This Python command-line tool converts Tiny AutoEncoders (TAEs) into ready-to-use Variational AutoEncoders (VAEs) and Transcoders for ComfyUI.  This allows you to leverage the speed and efficiency of TAEs within the ComfyUI workflow.
+**Tiny AutoEncoder Converter** is a command-line utility designed to convert Tiny AutoEncoders into Variational AutoEncoders (VAEs) and Transcoders compatible with ComfyUI.
 
-**What are Tiny AutoEncoders?**
+## What are Tiny AutoEncoders?
 
-Tiny AutoEncoders are extremely lightweight autoencoders that share the same "latent API" as Stable Diffusion's VAE.  They offer a significant advantage in speed and resource consumption when decoding Stable Diffusion latents into full-size images.
+Tiny AutoEncoders are highly optimized autoencoders that share the same latent space as Stable Diffusion and Flux VAEs. This characteristic provides a significant advantage in terms of speed and resource efficiency during the encoding and decoding processes.
 
-**What is ComfyUI?**
+## Functionality
 
-ComfyUI is a powerful and flexible node-based workflow editor for image generation and manipulation. It supports various models, including Stable Diffusion, SDXL, and Stable Video Diffusion.
+The tools perform the following conversions:
+- **VAE Conversion:** Generates a VAE model compatible with ComfyUI.
+- **Transcoder Conversion:** Creates a Transcoder to convert latents from one space to another, such as converting from SDXL to SD.
 
-**Functionality:**
-
-This tool takes a Tiny AutoEncoder model as input and performs the following conversions:
-
-* **VAE Conversion:** Creates a VAE compatible with ComfyUI.
-* **Transcoder Conversion:** Creates a Transcoder compatible with ComfyUI.  This allows for seamless integration with other nodes in your ComfyUI workflows.
-
-**Installation:**
+## Installation and Usage
 
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/<your_github_username>/TinyAutoEncoderConverter.git
+   git clone https://github.com/martin-rizzo/TinyAutoEncoderConverter.git
    ```
 
-2. **Install dependencies:**  (You'll need to adjust this based on your specific dependencies.  Include all necessary libraries here, e.g., PyTorch, etc.)
+2. **Run any of the bash scripts:** (For first-time use, this script will install all necessary dependencies, including libraries like Numpy.)
    ```bash
-   pip install -r requirements.txt
+   ./makeall.sh
    ```
 
-**Usage:**
+## Output
 
-```bash
-python TinyAutoEncoderConverter.py --input <path_to_tae_model> --output <output_directory>
-```
-
-* `<path_to_tae_model>`: Path to your Tiny AutoEncoder model file (e.g., `.ckpt`, `.pth`).
-* `<output_directory>`: Directory where the converted VAE and Transcoder files will be saved.
-
-**Example:**
-
-```bash
-python TinyAutoEncoderConverter.py --input my_tae_model.ckpt --output ./comfyui_models
-```
-
-**Output:**
-
-The script will generate two files in the specified output directory:
-
-* `<model_name>_vae.safetensors`: The VAE model file for ComfyUI.
-* `<model_name>_transcoder.safetensors`: The Transcoder model file for ComfyUI.
-
+When running the general `makeall.sh` script, it will generate several files with the following naming format:
+- `<model_name>_vae.safetensors`: VAE models compatible with ComfyUI.
+- `transcoder_from_*_to_*.safetensors`: Transcoder model files.
 
 ## License
 
-Copyright (c) 2024 Martin Rizzo  
+**Copyright (c) 2024 Martin Rizzo**  
 This project is licensed under the MIT license.  
-See the ["LICENSE"](LICENSE) file for details.
+Details can be found in the ["LICENSE"](LICENSE) file.
 
+## Disclaimer
 
-**Disclaimer:**
-
-This tool is provided "as is" without any warranty.  Use at your own risk.
-
+This tool is provided "as is" without any warranty. Use at your own risk.
