@@ -1,0 +1,31 @@
+
+# OS system files
+#
+.DS_Store
+.profile
+Thumbs.db
+
+# Backup and temporary files
+#
+*.bak
+*.tmp
+*.kate-swp
+
+# IDEs and editors
+#
+Xcodeproj/
+.xcuserdata/
+.vscode/
+*.sublime-project
+*.sublime-workspace
+
+# Python
+#
+__pycache__/
+venv/
+
+# User-specific files and folders
+#
+*~.*
+*~/
+
