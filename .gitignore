@@ -24,6 +24,9 @@ Xcodeproj/
 __pycache__/
 venv/
 
+# Models
+*.safetensors
+
 # User-specific files and folders
 #
 *~.*
