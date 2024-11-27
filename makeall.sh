@@ -10,8 +10,8 @@
 #   Command-line tool to build VAEs and Transcoders (from Tiny AutoEncoders).
 #_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
-MODEL_DIR=./original_taesd_models
-ORIGINAL_MODEL=diffusion_pytorch_model.ORIGINAL_MODEL
+MODEL_DIR='./original_taesd_models'
+ORIGINAL_MODEL='diffusion_pytorch_model.safetensors'
 
 SD_DIR="$MODEL_DIR/taesd"
 SDXL_DIR="$MODEL_DIR/taesdxl"

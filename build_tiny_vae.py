@@ -65,6 +65,34 @@ def fatal_error(message: str, *info_messages: str) -> None:
 
 #--------------------------------- HELPERS ---------------------------------#
 
+def is_terminal_output():
+    """Return True ifthe standard output is connected to a terminal."""
+    return sys.stdout.isatty()
+
+
+def find_unique_path(path: str) -> str:
+    """Returns the first available path to not overwrite an existing file."""
+    if not os.path.exists(path):
+        return path
+    base_name, extension = os.path.splitext(path)
+    for number in range(1, 1000000):
+        new_path = f"{base_name}_{number:02d}{extension}"
+        if not os.path.exists(new_path) or number == 999999:
+            return new_path
+
+
+def get_dtype_name(dtype: np.dtype, prefix: str = "") -> str:
+    """Convert a numpy dtype to a string name used in file names."""
+    if dtype == np.float16:
+        return f"{prefix}fp16"
+    elif dtype == np.float32:
+        return f"{prefix}fp32"
+    else:
+        return ""
+
+
+#--------------------------------- TENSORS ---------------------------------#
+
 def get_safetensors_header(file_path : str,
                            size_limit: int = 67108864
                            ) -> dict:
@@ -78,7 +106,7 @@ def get_safetensors_header(file_path : str,
         # verify that the file has at least 8 bytes (the minimum size for a header)
         if os.path.getsize(file_path) < 8:
             return []
-        
+
         # read the first 8 bytes to get the header length and decode the header data
         with open(file_path, "rb") as f:
             header_length = struct.unpack("<Q", f.read(8))[0]
@@ -86,27 +114,30 @@ def get_safetensors_header(file_path : str,
                 return []
             header = json.loads( f.read(header_length) )
             return header
-        
+
     # handle exceptions that may occur during header reading or decoding
     except (ValueError, json.JSONDecodeError, IOError):
         return []
 
 
-def get_tensor_prefix(state_dict: dict, postfix: str, not_contain: str = None) -> str:
+def get_tensor_prefix(state_dict    : dict,
+                      postfix       : str,
+                      not_containing: str = None
+                      ) -> str:
     """
     Returns the prefix of a key in the state dictionary that matches the given postfix.
     Args:
-        state_dict (dict): The model parameters as a dictionary.
-        postfix  (str): The suffix to match at the end of the key.
+        state_dict    (dict): The model parameters as a dictionary.
+        postfix        (str): The suffix to match at the end of the key.
+        not_containing (str): If provided, specifies that the keys returned should not contain this substring.
     """
     # iterate over all keys in the state dictionary
     for key in state_dict.keys():
-        # check if the key ends with the given postfix
         if key.endswith(postfix):
-            if (not_contain is not None) and (not_contain in key):
+            if (not_containing is not None) and (not_containing in key):
                 continue
             return key[:-len(postfix)]
-        
+
     # if no key matches the postfix, return an empty string
     return ""
 
@@ -117,12 +148,12 @@ def load_tensors(path         : str,
                  ):
     """
     Load tensors with the specified prefix from a safetensors file.
-    
+
     Args:
-        path          (str) : The path to the safetensors file.
-        prefix        (str) : The prefix of the tensors to load.
-        target_prefix (str) : The prefix used as replacement of the original prefix.
-                              If empty, the original prefix is removed and not replaced.
+        path          (str): The path to the safetensors file.
+        prefix        (str): The prefix of the tensors to load.
+        target_prefix (str): The prefix used as replacement of the original prefix.
+                             If empty, the original prefix is removed and not replaced.
     Returns:
         dict: A dictionary containing the loaded tensors.
     """
@@ -142,42 +173,6 @@ def load_tensors(path         : str,
                 tensors[target_key] = f.get_tensor(key)
 
     return tensors
-
-
-def find_unique_path(path: str) -> str:
-    """
-    Returns the first available path to not overwrite an existing file.
-    Args:
-        file_path (str): The initial file path.
-    """
-    if not os.path.exists(path):
-        return path
-    base_name, extension = os.path.splitext(path)
-    number = 1
-    while True:
-        new_path = f"{base_name}_{number:02d}{extension}"
-        if not os.path.exists(new_path):
-            return new_path
-        number += 1
-
-
-def is_terminal_output():
-    """
-    Return True ifthe standard output is connected to a terminal.
-    """
-    return sys.stdout.isatty()
-
-
-def get_dtype_name(dtype: np.dtype, prefix: str = "") -> str:
-    """
-    Convert a numpy dtype to a string name used in file names.
-    """
-    if dtype == np.float16:
-        return f"{prefix}fp16"
-    elif dtype == np.float32:
-        return f"{prefix}fp32"
-    else:
-        return ""
 
 
 #----------------------------- IDENTIFICATION ------------------------------#
@@ -241,7 +236,7 @@ def is_taesd_with_role(file_path: str, state_dict: dict, role: str) -> bool:
     for key in state_dict.keys():
         if any(subname in key for subname in subnames):
             return True
-        
+
     # how last, check if the filename itself contains the role information
     file_name, _ = os.path.splitext(os.path.basename(file_path))
     return role in file_name.lower()
@@ -250,7 +245,7 @@ def is_taesd_with_role(file_path: str, state_dict: dict, role: str) -> bool:
 def find_taesd_with_role(input_files: list[str], role: str) -> tuple[str, str]:
     """
     Find the Tiny AutoEncoder (TAESD) model with a specific role from a list of input files.
-    
+
     Args:
         input_files (list[str]): List of input file paths.
         role            (str)  : The role of the model, either 'encoder' or 'decoder'.
@@ -259,20 +254,88 @@ def find_taesd_with_role(input_files: list[str], role: str) -> tuple[str, str]:
     """
     assert role in ("encoder", "decoder"), "Invalid role. Must be 'encoder' or 'decoder'."
     oposite_role = "decoder" if role == "encoder" else "encoder"
-    
+
     file_path     = ""
     tensor_prefix = ""
     for file in input_files:
         header = get_safetensors_header(file)
         if is_taesd_with_role(file, header, role):
             file_path     = file
-            tensor_prefix = get_tensor_prefix(header, ".3.conv.4.bias", not_contain=oposite_role)
+            tensor_prefix = get_tensor_prefix(header, ".3.conv.4.bias", not_containing=oposite_role)
             break
-    
+
     return (file_path, tensor_prefix)
 
 
 #-------------------------------- BUILDING ---------------------------------#
+
+ENCODER_PREFIX="taesd_encoder."
+DECODER_PREFIX="taesd_decoder."
+
+def fix_tiny_vae_tensors(tiny_vae_tensors: dict,
+                         model_class     : str
+                         ) -> dict:
+    """
+    Adjust the state dictionary to match the expected format for a Tiny AutoEncoder (TAESD) model.
+    """
+    assert model_class in VALID_MODEL_CLASSES, f"Invalid model class {model_class}"
+    decoder_layer_offset = 0
+
+    # expected decoder format:
+    #    taesd_decoder.
+    #        0:     empty      -> Clamp()
+    #        1: [64, ch, 3, 3] -> conv(latent_channels 64)
+    #        2:     empty      -> ReLU()
+
+    # if the tensor "taesd_decoder.0.weight" exists (which should not exist),
+    # then shift all the decoder layers by 1
+    if f"{DECODER_PREFIX}0.weight" in tiny_vae_tensors:
+        decoder_layer_offset = 1
+
+    # apply the offset to all the decoder layers if any shift is needed
+    if decoder_layer_offset!=0:
+        fixed_tensors = {}
+
+        for key, tensor in tiny_vae_tensors.items():
+
+            if not key.startswith(DECODER_PREFIX):
+                fixed_tensors[key] = tensor
+                continue
+
+            prefix          = DECODER_PREFIX
+            layer           = ""
+            key             = key[len(DECODER_PREFIX):]
+            number, _subkey = key.split('.',1)
+
+            if number.isdecimal():
+                key = _subkey
+                layer = f"{int(number) + decoder_layer_offset}."
+
+            fixed_tensors[f"{prefix}{layer}{key}"] = tensor
+
+        tiny_vae_tensors = fixed_tensors
+
+    # add vae_scale and vae_shift if they are missing
+    if "vae_scale" not in tiny_vae_tensors and "vae_shift" not in tiny_vae_tensors:
+
+        if model_class == "sd":
+            tiny_vae_tensors["vae_scale"] = np.array(0.18215)
+            tiny_vae_tensors["vae_shift"] = np.array(0.0)
+
+        elif model_class == "sdxl":
+            tiny_vae_tensors["vae_scale"] = np.array(0.13025)
+            tiny_vae_tensors["vae_shift"] = np.array(0.0)
+
+        elif model_class == "sd3":
+            tiny_vae_tensors["vae_scale"] = np.array(1.5305)
+            tiny_vae_tensors["vae_shift"] = np.array(0.0609)
+
+        elif model_class == "f1":
+            tiny_vae_tensors["vae_scale"] = np.array(0.3611)
+            tiny_vae_tensors["vae_shift"] = np.array(0.1159)
+
+    return tiny_vae_tensors
+
 
 def build_tiny_vae(encoder_path_and_prefix: tuple[str, str],
                    decoder_path_and_prefix: tuple[str, str],
@@ -281,57 +344,41 @@ def build_tiny_vae(encoder_path_and_prefix: tuple[str, str],
                    ) -> dict:
     """
     Build a Tiny VAE model using the provided encoder and decoder paths.
-    
+
     Args:
         encoder_path_and_prefix (tuple[str, str]): The path to the encoder file and its tensor prefix.
         decoder_path_and_prefix (tuple[str, str]): The path to the decoder file and its tensor prefix.
-        
+
     Returns:
         dict: The Tiny VAE model parameters.
     """
     assert model_class in VALID_MODEL_CLASSES, f"Invalid model class {model_class}"
-    
+
     encoder_tensors = load_tensors(path   = encoder_path_and_prefix[0],
                                    prefix = encoder_path_and_prefix[1],
-                                   target_prefix = "taesd_encoder")
-    
+                                   target_prefix = ENCODER_PREFIX)
+
     decoder_tensors = load_tensors(path   = decoder_path_and_prefix[0],
                                    prefix = decoder_path_and_prefix[1],
-                                   target_prefix = "taesd_decoder")
-    
+                                   target_prefix = DECODER_PREFIX)
+
     print("##>> encoder keys:", len(encoder_tensors))
     print("##>> decoder keys:", len(decoder_tensors))
-    
+
     # combine the encoder and decoder parameters into a single dictionary
-    tiny_vae_params = {**encoder_tensors, **decoder_tensors}
+    tiny_vae_tensors = {**encoder_tensors, **decoder_tensors}
 
-    # add vae_scale and vae_shift if they are missing
-    if "vae_scale" not in tiny_vae_params and "vae_shift" not in tiny_vae_params:
+    # fix
+    tiny_vae_tensors= fix_tiny_vae_tensors(tiny_vae_tensors, model_class=model_class)
 
-        if model_class == "sd":
-            tiny_vae_params["vae_scale"] = np.array(0.18215)
-            tiny_vae_params["vae_shift"] = np.array(0.0)
-
-        elif model_class == "sdxl":
-            tiny_vae_params["vae_scale"] = np.array(0.13025)
-            tiny_vae_params["vae_shift"] = np.array(0.0)
-
-        elif model_class == "sd3":
-            tiny_vae_params["vae_scale"] = np.array(1.5305)
-            tiny_vae_params["vae_shift"] = np.array(0.0609)
-
-        elif model_class == "f1":
-            tiny_vae_params["vae_scale"] = np.array(0.3611)
-            tiny_vae_params["vae_shift"] = np.array(0.1159)
-
+    # convert the data types of the tensors (if necessary)
     if dtype is not None:
-        for key, tensor in tiny_vae_params.items():
-            if isinstance(tensor, np.ndarray):
-                tiny_vae_params[key] = tensor.astype(dtype)
+        converted_tensors = {}
+        for key, tensor in tiny_vae_tensors.items():
+            converted_tensors[key] = tensor.astype(dtype) if isinstance(tensor, np.ndarray) else tensor
+        tiny_vae_tensors = converted_tensors
 
-    return tiny_vae_params
-
-
+    return tiny_vae_tensors
 
 
 #===========================================================================#
@@ -362,7 +409,7 @@ def main(args: list=None, parent_script: str=None):
     _group = parser.add_mutually_exclusive_group()
     _group.add_argument(     "--float16"    , dest="dtype", action="store_const", const=np.float16, help="store the built VAE as float16")
     _group.add_argument(     "--float32"    , dest="dtype", action="store_const", const=np.float32, help="store the built VAE as float32") 
-    
+
     # parse the arguments and check that they are valid
     args = parser.parse_args(args)
 
@@ -374,7 +421,7 @@ def main(args: list=None, parent_script: str=None):
     # check that a model class was specified
     if not args.model_class:
         fatal_error("A model class must be specified (--sd, --sdxl, --sd3 or --flux).")
-    
+
     print("##>> Model class:", args.model_class)
 
     # find the encoder and decoder files and their tensor prefixes
@@ -395,7 +442,7 @@ def main(args: list=None, parent_script: str=None):
                                 )
 
     # find a unique path for the output file
-    output_file_path = f"tae{args.model_class}_vae{get_dtype_name(args.dtype,'_')}.safetensors"
+    output_file_path = f"tiny_vae_{args.model_class}{get_dtype_name(args.dtype,'_')}.safetensors"
     if args.output_dir:
         if not os.path.exists(args.output_dir):
             os.makedirs(args.output_dir)
