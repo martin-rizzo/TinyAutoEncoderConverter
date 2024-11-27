@@ -3,16 +3,14 @@
 # Purpose : Bash library for managing python virtual environments in small projects.
 # Author  : Martin Rizzo | <martinrizzo@gmail.com>
 # Date    : Nov 26, 2024
-# Repo    : https://github.com/martin-rizzo/PixArtToolkit
+# Repo    : https://github.com/martin-rizzo/TinyAutoEncoderConverter
 # License : MIT
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#
 #  FUNCTIONS:
 #    - require_venv          : Checks whether a given virtual environment exists and is properly configured.
 #    - ensure_venv_is_active : Ensures the specified Python virtual environment is active.
 #    - virtual_python        : Runs a command or Python script within the specified virtual environment.
-#
-#-----------------------------------------------------------------------------
+#_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 
 # Stores the path to the last used virtual environment.
 # This variable is used by the `virtual_python()` function.

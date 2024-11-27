@@ -3,11 +3,11 @@ File    : build_tiny_vae.py
 Purpose : Command-line tool to build a tiny Variational Autoencoder (VAE) model.
 Author  : Martin Rizzo | <martinrizzo@gmail.com>
 Date    : Nov 23, 2024
-Repo    : https://github.com/martin-rizzo/ComfyUI-xPixArt
+Repo    : https://github.com/martin-rizzo/TinyAutoEncoderConverter
 License : MIT
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                              ComfyUI-xPixArt
-    ComfyUI nodes providing experimental support for PixArt-Sigma model
+                          Tiny AutoEncoder Converter
+   Command-line tool to build VAEs and Transcoders (from Tiny AutoEncoders)
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 """
 import os
