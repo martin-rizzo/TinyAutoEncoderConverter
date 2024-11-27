@@ -5,7 +5,8 @@
 
 ## What are Tiny AutoEncoders?
 
-Tiny AutoEncoders are highly optimized autoencoders that share the same latent space as Stable Diffusion and Flux VAEs. This characteristic provides a significant advantage in terms of speed and resource efficiency during the encoding and decoding processes.
+Tiny AutoEncoders (TAEs) are highly optimized autoencoders sharing the same latent space as Stable Diffusion and Flux VAEs. This allows for significantly faster and more resource-efficient image encoding and decoding. These remarkable models were crafted and trained by Ollin Boer Bohan to whom I extend my deepest gratitude. Find Ollin's original implementation and pre-trained models in the [Tiny AutoEncoder Repository](https://github.com/madebyollin/taesd).
+
 
 ## Functionality
 
