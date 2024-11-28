@@ -319,20 +319,20 @@ def fix_tiny_vae_tensors(tiny_vae_tensors: dict,
     if "vae_scale" not in tiny_vae_tensors and "vae_shift" not in tiny_vae_tensors:
 
         if model_class == "sd":
-            tiny_vae_tensors["vae_scale"] = np.array(0.18215)
-            tiny_vae_tensors["vae_shift"] = np.array(0.0)
+            tiny_vae_tensors["vae_scale"] = np.array( [0.18215], dtype=np.float32)
+            tiny_vae_tensors["vae_shift"] = np.array( [0.0    ], dtype=np.float32)
 
         elif model_class == "sdxl":
-            tiny_vae_tensors["vae_scale"] = np.array(0.13025)
-            tiny_vae_tensors["vae_shift"] = np.array(0.0)
+            tiny_vae_tensors["vae_scale"] = np.array( [0.13025], dtype=np.float32)
+            tiny_vae_tensors["vae_shift"] = np.array( [0.0    ], dtype=np.float32)
 
         elif model_class == "sd3":
-            tiny_vae_tensors["vae_scale"] = np.array(1.5305)
-            tiny_vae_tensors["vae_shift"] = np.array(0.0609)
+            tiny_vae_tensors["vae_scale"] = np.array( [1.5305], dtype=np.float32)
+            tiny_vae_tensors["vae_shift"] = np.array( [0.0609], dtype=np.float32)
 
         elif model_class == "f1":
-            tiny_vae_tensors["vae_scale"] = np.array(0.3611)
-            tiny_vae_tensors["vae_shift"] = np.array(0.1159)
+            tiny_vae_tensors["vae_scale"] = np.array( [0.3611], dtype=np.float32)
+            tiny_vae_tensors["vae_shift"] = np.array( [0.1159], dtype=np.float32)
 
     return tiny_vae_tensors
 
@@ -368,7 +368,7 @@ def build_tiny_vae(encoder_path_and_prefix: tuple[str, str],
     # combine the encoder and decoder parameters into a single dictionary
     tiny_vae_tensors = {**encoder_tensors, **decoder_tensors}
 
-    # fix
+    # apply any necessary fixes to the tensors
     tiny_vae_tensors= fix_tiny_vae_tensors(tiny_vae_tensors, model_class=model_class)
 
     # convert the data types of the tensors (if necessary)
