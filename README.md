@@ -1,18 +1,36 @@
+<div align="center">
+
 # Tiny AutoEncoder Converter
 
-**Tiny AutoEncoder Converter** is a command-line utility designed to convert Tiny AutoEncoders into Variational AutoEncoders (VAEs) and Transcoders compatible with ComfyUI.
+<p>
+<img alt="Platform"  src="https://img.shields.io/badge/platform-Linux-blue">
+<img alt="License"   src="https://img.shields.io/github/license/martin-rizzo/TinyAutoEncoderConverter?color=blue">
+<img alt="Version"   src="https://img.shields.io/github/v/tag/martin-rizzo/TinyAutoEncoderConverter?label=version">
+<img alt="Last"      src="https://img.shields.io/github/last-commit/martin-rizzo/TinyAutoEncoderConverter">
+<!--
+|
+<a href="https://civitai.com/models/420163/abominable-workflows">
+   <img alt="CivitAI"      src="https://img.shields.io/badge/page-CivitAI-00F"></a>
+<a href="https://huggingface.co/martin-rizzo/AbominableWorkflows">
+   <img alt="Hugging Face" src="https://img.shields.io/badge/models-HuggingFace-yellow"></a>
+-->
+</p>
+</div>
+
+
+**Tiny AutoEncoder Converter** is a command-line utility that converts Tiny AutoEncoders into comfyui-compatible Variational AutoEncoders (VAEs) and Transcoders.
 
 
 ## What are Tiny AutoEncoders?
 
-Tiny AutoEncoders (TAEs) are highly optimized autoencoders sharing the same latent space as Stable Diffusion and Flux VAEs. This allows for significantly faster and more resource-efficient image encoding and decoding. These remarkable models were crafted and trained by Ollin Boer Bohan to whom I extend my deepest gratitude. Find Ollin's original implementation and pre-trained models in the [Tiny AutoEncoder Repository](https://github.com/madebyollin/taesd).
+Tiny AutoEncoders (TAEs) are highly optimized autoencoders that share the same latent space as Stable Diffusion and Flux VAEs.  This enables significantly faster and more resource-efficient image encoding and decoding.  These models were developed and trained by Ollin Boer Bohan, to whom I express my sincere gratitude. You can find Ollin's original implementation and pre-trained models in the [Tiny AutoEncoder Repository](https://github.com/madebyollin/taesd).
 
 
-## Functionality
+## Command-Line Tools
 
-The tools perform the following conversions:
-- **VAE Conversion:** Generates a VAE model compatible with ComfyUI.
-- **Transcoder Conversion:** Creates a Transcoder to convert latents from one space to another, such as converting from SDXL to SD.
+This project provides the following command-line conversion tools:
+- `build_tiny_vae.py`: Generates a comfyui-compatible VAE model from a Tiny AutoEncoder.
+- `build_tiny_transcoder.py`: Creates a transcoder enabling latent space conversion between different models (e.g., SDXL to SD).
 
 
 ## Installation and Usage
@@ -41,7 +59,7 @@ The tools perform the following conversions:
 ## Output
 
 When running the general `makeall.sh` script, it will generate several files with the following naming format:
-- `<model_name>_vae.safetensors`: VAE models compatible with ComfyUI.
+- `tiny_vae_*.safetensors`: VAE models compatible with ComfyUI.
 - `transcoder_from_*_to_*.safetensors`: Transcoder model files.
 
 ## License
