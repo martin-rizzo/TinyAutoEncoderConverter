@@ -362,9 +362,6 @@ def build_tiny_vae(encoder_path_and_prefix: tuple[str, str],
                                    prefix = decoder_path_and_prefix[1],
                                    target_prefix = DECODER_PREFIX)
 
-    print("##>> encoder keys:", len(encoder_tensors))
-    print("##>> decoder keys:", len(decoder_tensors))
-
     # combine the encoder and decoder parameters into a single dictionary
     tiny_vae_tensors = {**encoder_tensors, **decoder_tensors}
 
@@ -422,8 +419,6 @@ def main(args: list=None, parent_script: str=None):
     if not args.model_class:
         fatal_error("A model class must be specified (--sd, --sdxl, --sd3 or --flux).")
 
-    print("##>> Model class:", args.model_class)
-
     # find the encoder and decoder files and their tensor prefixes
     encoder_path, encoder_source_prefix = find_taesd_with_role(args.input_files, role="encoder")
     decoder_path, decoder_source_prefix = find_taesd_with_role(args.input_files, role="decoder")
@@ -432,8 +427,8 @@ def main(args: list=None, parent_script: str=None):
     if not decoder_path:
         fatal_error("No TAESD decoder model found.")
 
-    print(f"Encoder file: {encoder_path}, Tensor prefix: {encoder_source_prefix}")
-    print(f"Decoder file: {decoder_path}, Tensor prefix: {decoder_source_prefix}")
+    print(f' - Encoder {'['+args.model_class+']':<6} | File: "{os.path.basename(encoder_path)}" | Prefix: `{encoder_source_prefix}`')
+    print(f' - Decoder {'['+args.model_class+']':<6} | File: "{os.path.basename(decoder_path)}" | Prefix: `{decoder_source_prefix}`')
 
     state_dict = build_tiny_vae(encoder_path_and_prefix = (encoder_path, encoder_source_prefix),
                                 decoder_path_and_prefix = (decoder_path, decoder_source_prefix),
@@ -450,7 +445,7 @@ def main(args: list=None, parent_script: str=None):
     output_file_path = find_unique_path(output_file_path)
 
     # save the state dict to a file
-    print(f"Saving VAE to {output_file_path}")
+    print(f' > Saving "{output_file_path}"\n')
     save_file(state_dict, output_file_path)
 
 

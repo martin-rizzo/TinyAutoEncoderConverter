@@ -19,8 +19,19 @@ import argparse
 import numpy as np
 from safetensors       import safe_open
 from safetensors.numpy import save_file
-VALID_MODEL_CLASSES = ("sd", "sdxl", "sd3", "f1")
 
+# `from_latent_format`/`to_latent_format` parameters
+# always must contain any of the following valid formats:
+VALID_LATENT_FORMATS = ("sd", "sdxl", "sd3", "f1")
+
+# scale/shift values to apply on latents that are preprocessed by comfyUI/a1111
+# (these values ensure compatibility with that software)
+SCALE_SHIFT_BY_LATENT_FORMAT = {
+    "sd"  : (0.18215,  0.    ),
+    "sdxl": (0.13025,  0.    ),
+    "sd3" : (1.5305 , -0.0609),
+    "f1"  : (0.3611 , -0.1159)
+}
 
 #---------------------------- COLORED MESSAGES -----------------------------#
 
@@ -311,14 +322,15 @@ def find_taesd_with_role(input_files: list[str], role: str) -> tuple[str, str] |
 ENCODER_PREFIX="encoder."
 DECODER_PREFIX="decoder."
 
-def build_tiny_transcoder(encoder_path_and_prefix: tuple[str, str],
-                          decoder_path_and_prefix: tuple[str, str],
-                          from_model_class       : str,
-                          to_model_class         : str,
-                          dtype                  : np.dtype = None
+def build_tiny_transcoder(encoder_path_and_prefix : tuple[str, str],
+                          decoder_path_and_prefix : tuple[str, str],
+                          use_unnormalized_adapter: bool,
+                          input_latent_format     : str,
+                          output_latent_format    : str,
+                          dtype                   : np.dtype = None
                           ) -> dict:
-    assert from_model_class in VALID_MODEL_CLASSES, f"Invalid from_model_class '{from_model_class}'"
-    assert to_model_class   in VALID_MODEL_CLASSES, f"Invalid to_model_class '{to_model_class}'"
+    assert input_latent_format  in VALID_LATENT_FORMATS, f"Invalid input_latent_format '{input_latent_format}'"
+    assert output_latent_format in VALID_LATENT_FORMATS, f"Invalid output_latent_format '{output_latent_format}'"
 
     encoder_tensors = load_tensors(path   = encoder_path_and_prefix[0],
                                    prefix = encoder_path_and_prefix[1],
@@ -346,8 +358,17 @@ def build_tiny_transcoder(encoder_path_and_prefix: tuple[str, str],
 
     # if the transcoder converted from SDXL to SD,
     # then add a gaussian blur process to remove high frequency noise
-    if from_model_class=="sdxl" and to_model_class=="sd":
+    if input_latent_format=="sdxl" and output_latent_format=="sd":
         transcoder_tensors["gaussian_blur_sigma"] = np.array( [0.5], dtype=np.float32 )
+
+    # insert a compatible adapter to match the input/output latent formats of comfyui/a1111
+    if use_unnormalized_adapter:
+        scale_shift = SCALE_SHIFT_BY_LATENT_FORMAT.get(input_latent_format, (1.,0.))
+        transcoder_tensors["unnormalized_adapter_in.scale_factor"]  = np.array( [scale_shift[0]], dtype=np.float32 )
+        transcoder_tensors["unnormalized_adapter_in.shift_factor"]  = np.array( [scale_shift[1]], dtype=np.float32 )
+        scale_shift = SCALE_SHIFT_BY_LATENT_FORMAT.get(output_latent_format, (1.,0.))
+        transcoder_tensors["unnormalized_adapter_out.scale_factor"] = np.array( [scale_shift[0]], dtype=np.float32 )
+        transcoder_tensors["unnormalized_adapter_out.shift_factor"] = np.array( [scale_shift[1]], dtype=np.float32 )
 
     # convert the data type (if necessary)
     if dtype is not None:
@@ -398,43 +419,43 @@ def main(args: list=None, parent_script: str=None):
         disable_colors()
 
     # determine which file the decoder will be loaded from
-    # and the model class to be used (sd, sdxl,...)
-    from_model_class = ""
-    decoder_path     = ""
+    # and the latent format to be used (sd, sdxl,...)
+    from_latent_format = ""
+    decoder_path       = ""
     if args.from_sd:
-        from_model_class = "sd"
-        decoder_path     = args.from_sd
+        from_latent_format = "sd"
+        decoder_path       = args.from_sd
     elif args.from_sdxl:
-        from_model_class = "sdxl"
-        decoder_path     = args.from_sdxl
+        from_latent_format = "sdxl"
+        decoder_path       = args.from_sdxl
     elif args.from_sd3:
-        from_model_class = "sd3"
-        decoder_path     = args.from_sd3
+        from_latent_format = "sd3"
+        decoder_path       = args.from_sd3
     elif args.from_flux:
-        from_model_class = "f1"
-        decoder_path     = args.from_flux
+        from_latent_format = "f1"
+        decoder_path       = args.from_flux
 
     # determine which file the encoder will be loaded from
-    # and the model class to be used (sd, sdxl,...)
-    to_model_class = ""
-    encoder_path   = ""
+    # and the latent format to be used (sd, sdxl,...)
+    to_latent_format = ""
+    encoder_path     = ""
     if args.to_sd:
-        to_model_class = "sd"
+        to_latent_format = "sd"
         encoder_path   = args.to_sd
     elif args.to_sdxl:
-        to_model_class = "sdxl"
+        to_latent_format = "sdxl"
         encoder_path   = args.to_sdxl
     elif args.to_sd3:
-        to_model_class = "sd3"
+        to_latent_format = "sd3"
         encoder_path   = args.to_sd3
     elif args.to_flux:
-        to_model_class = "f1"
+        to_latent_format = "f1"
         encoder_path   = args.to_flux
 
     # check that source/destination models are specified
-    if not from_model_class:
+    if not from_latent_format:
         fatal_error("A model must be specified as the source for transcoding (--from_sd, --from_sdxl, etc.)")
-    if not to_model_class:
+    if not to_latent_format:
         fatal_error("A model must be specified as the destination for transcoding (--to_sd, --to_sdxl, etc.)")
 
     # find the encoder/decoder file path and tensor prefix
@@ -446,25 +467,26 @@ def main(args: list=None, parent_script: str=None):
     if not decoder_path_and_prefix:
         fatal_error("No TAESD decoder model found.")
 
-    print(f"Encoder file: {encoder_path_and_prefix[0]}, Tensor prefix: {encoder_path_and_prefix[1]}")
-    print(f"Decoder file: {decoder_path_and_prefix[0]}, Tensor prefix: {decoder_path_and_prefix[1]}")
-    state_dict = build_tiny_transcoder(encoder_path_and_prefix = encoder_path_and_prefix,
-                                       decoder_path_and_prefix = decoder_path_and_prefix,
-                                       from_model_class        = from_model_class,
-                                       to_model_class          = to_model_class,
-                                       dtype                   = args.dtype,
+    print(f' - Encoder {'['+from_latent_format+']':<6} | File: "{os.path.basename(encoder_path_and_prefix[0])}" | Prefix: `{encoder_path_and_prefix[1]}`')
+    print(f' - Decoder {'['+to_latent_format+']'  :<6} | File: "{os.path.basename(decoder_path_and_prefix[0])}" | Prefix: `{decoder_path_and_prefix[1]}`')
+    state_dict = build_tiny_transcoder(encoder_path_and_prefix  = encoder_path_and_prefix,
+                                       decoder_path_and_prefix  = decoder_path_and_prefix,
+                                       use_unnormalized_adapter = True,
+                                       input_latent_format      = from_latent_format,
+                                       output_latent_format     = to_latent_format,
+                                       dtype                    = args.dtype,
                                        )
 
     # generate a unique name for the output file
     # (the name is based on the model class names and data type)
-    from_model_class = get_file_name_tag(from_model_class, prefix='_')
-    to_model_class   = get_file_name_tag(to_model_class  , prefix='_')
-    dtype_name       = get_file_name_tag(args.dtype      , prefix='_')
-    output_file_path = f"transcoder_from{from_model_class}_to{to_model_class}{dtype_name}.safetensors"
-    output_file_path = find_unique_path(output_file_path)
+    from_latent_format = get_file_name_tag(from_latent_format, prefix='_')
+    to_latent_format   = get_file_name_tag(to_latent_format  , prefix='_')
+    dtype_name         = get_file_name_tag(args.dtype        , prefix='_')
+    output_file_path   = f"transcoder_from{from_latent_format}_to{to_latent_format}{dtype_name}.safetensors"
+    output_file_path   = find_unique_path(output_file_path)
 
     # save the state dict to a file
-    print(f"Saving VAE to {output_file_path}")
+    print(f' > Saving "{output_file_path}"\n')
     save_file(state_dict, output_file_path)
 
 

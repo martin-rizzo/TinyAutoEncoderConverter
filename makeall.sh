@@ -38,7 +38,7 @@ for arg in "$@"; do
             ;;
     esac
 done
-
+echo
 
 # BUILD VAEs FOR ALL MODELS
 ./build_tiny_vae.sh "${EXTRA_PARAMS[@]}" --sd    "$SD_DIR"/*
