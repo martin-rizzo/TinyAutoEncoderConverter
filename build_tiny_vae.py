@@ -395,7 +395,7 @@ def main(args: list=None, parent_script: str=None):
         formatter_class=argparse.RawTextHelpFormatter,
         )
     parser.add_argument(   "input_files"    , nargs="+"           , help="input files to process")
-    parser.add_argument("-o", "--output_dir", type=str            , help="output directory for the VAE")
+    parser.add_argument("-o", "--output-dir", type=str            , help="the output directory where the model will be saved")
     parser.add_argument("-c", "--color"     , action="store_true" , help="use color output when connected to a terminal")
     parser.add_argument("--color-always"    , action="store_true" , help="always use color output")
     _group = parser.add_mutually_exclusive_group()
@@ -440,7 +440,7 @@ def main(args: list=None, parent_script: str=None):
     output_file_path = f"tiny_vae_{args.model_class}{get_dtype_name(args.dtype,'_')}.safetensors"
     if args.output_dir:
         if not os.path.exists(args.output_dir):
-            os.makedirs(args.output_dir)
+            fatal_error("The specified output directory does not exist. '{args.output_dir}'")
         output_file_path = os.path.join(args.output_dir, output_file_path)
     output_file_path = find_unique_path(output_file_path)
 

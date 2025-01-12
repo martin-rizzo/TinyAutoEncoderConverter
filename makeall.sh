@@ -33,9 +33,10 @@
 HELP="
 Usage: $0 [options]
 Options:
-    -h, --help        Show this help message and exit
-    --float16 --half  Build models in float16
-    --float32         Build models in float32
+    -h, --help         Show this help message and exit
+    --float16, --half  Build models in float16
+    --float32          Build models in float32
+    --clean            Clean output directory
 "
 MODEL_DIR='./original_taesd_models'
 ORIGINAL_MODEL='diffusion_pytorch_model.safetensors'
@@ -44,22 +45,25 @@ SD_DIR="$MODEL_DIR/taesd"
 SDXL_DIR="$MODEL_DIR/taesdxl"
 SD3_DIR="$MODEL_DIR/taesd3"
 FLUX_DIR="$MODEL_DIR/taef1"
+OUTPUT_DIR='./output'
 
 # extra parameters to pass to the build scripts
-# (by default enable color output)
-EXTRA_PARAMS=( '--color' )
+# (by default enable color and set output directory to $OUTPUT_DIR)
+EXTRA_PARAMS=( '--color' '--output-dir' "$OUTPUT_DIR" )
 
 # loop through the arguments and set the corresponding parameters
 SHOW_HELP=false
+CLEAN=false
 for arg in "$@"; do
     case $arg in
         --float16|--half)
             EXTRA_PARAMS+=( '--float16' )
-            shift
             ;;
         --float32)
             EXTRA_PARAMS+=( '--float32' )
-            shift
+            ;;
+        --clean)
+            CLEAN=true
             ;;
         -h|--help)
             SHOW_HELP=true
@@ -69,8 +73,14 @@ for arg in "$@"; do
             exit 1
             ;;
     esac
+    shift
 done
 
+if [[ $CLEAN == true ]]; then
+    echo "Cleaning output directory..."
+    rm -v "$OUTPUT_DIR"/*.safetensors 
+    exit 0
+fi
 if [[ $SHOW_HELP == true ]]; then
     echo "$HELP"
     exit 0

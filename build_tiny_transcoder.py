@@ -418,22 +418,23 @@ def main(args: list=None, parent_script: str=None):
         description="Build a Tiny Transcoder model for using in ComfyUI and convert latent images.",
         formatter_class=argparse.RawTextHelpFormatter,
         )
-    parser.add_argument("-c", "--color"   , action="store_true" , help="use color output when connected to a terminal")
-    parser.add_argument(  "--color-always", action="store_true" , help="always use color output")
+    parser.add_argument("-o", "--output-dir", type=str            , help="the output directory where the model will be saved")
+    parser.add_argument("-c", "--color"     , action="store_true" , help="use color output when connected to a terminal")
+    parser.add_argument(   "--color-always" , action="store_true" , help="always use color output")
     _group = parser.add_mutually_exclusive_group(required=True)
-    _group.add_argument(     "--from-sd"  , help="the Tiny AutoEncoder model with a SD1.5 decoder")
-    _group.add_argument(     "--from-sdxl", help="the Tiny AutoEncoder model with a SDXL decoder")
-    _group.add_argument(     "--from-sd3" , help="the Tiny AutoEncoder model with a SD3 decoder")
-    _group.add_argument(     "--from-flux", help="the Tiny AutoEncoder model with a Flux decoder")
+    _group.add_argument(      "--from-sd"   , help="the Tiny AutoEncoder model with a SD1.5 decoder")
+    _group.add_argument(      "--from-sdxl" , help="the Tiny AutoEncoder model with a SDXL decoder")
+    _group.add_argument(      "--from-sd3"  , help="the Tiny AutoEncoder model with a SD3 decoder")
+    _group.add_argument(      "--from-flux" , help="the Tiny AutoEncoder model with a Flux decoder")
     _group = parser.add_mutually_exclusive_group(required=True)
-    _group.add_argument(     "--to-sd"    , help="the Tiny AutoEncoder model with a SD1.5 encoder")
-    _group.add_argument(     "--to-sdxl"  , help="the Tiny AutoEncoder model with a SDXL encoder")
-    _group.add_argument(     "--to-sd3"   , help="the Tiny AutoEncoder model with a SD3 encoder")
-    _group.add_argument(     "--to-flux"  , help="the Tiny AutoEncoder model with a Flux encoder")
+    _group.add_argument(      "--to-sd"     , help="the Tiny AutoEncoder model with a SD1.5 encoder")
+    _group.add_argument(      "--to-sdxl"   , help="the Tiny AutoEncoder model with a SDXL encoder")
+    _group.add_argument(      "--to-sd3"    , help="the Tiny AutoEncoder model with a SD3 encoder")
+    _group.add_argument(      "--to-flux"   , help="the Tiny AutoEncoder model with a Flux encoder")
     _group = parser.add_mutually_exclusive_group()
-    _group.add_argument(     "--float16"  , dest="dtype", action="store_const", const=np.float16, help="store the built transcoder as float16")
-    _group.add_argument(     "--float32"  , dest="dtype", action="store_const", const=np.float32, help="store the built transcoder as float32")
-    parser.add_argument(     "--blur"     , type=float, help="the gaussian blur sigma to apply in the bridge between decoder and encoder")
+    _group.add_argument(      "--float16"   , dest="dtype", action="store_const", const=np.float16, help="store the built transcoder as float16")
+    _group.add_argument(      "--float32"   , dest="dtype", action="store_const", const=np.float32, help="store the built transcoder as float32")
+    parser.add_argument(      "--blur"      , type=float, help="the gaussian blur sigma to apply in the bridge between decoder and encoder")
     args = parser.parse_args(args)
 
     # determine if color should be used
@@ -508,6 +509,10 @@ def main(args: list=None, parent_script: str=None):
     blur               = get_file_name_tag(args.blur         , prefix='_blur')
     dtype_name         = get_file_name_tag(args.dtype        , prefix='_')
     output_file_path   = f"transcoder{blur}_from{from_latent_format}_to{to_latent_format}{dtype_name}.safetensors"
+    if args.output_dir:
+        if not os.path.exists(args.output_dir):
+            fatal_error("The specified output directory does not exist. '{args.output_dir}'")
+        output_file_path = os.path.join(args.output_dir, output_file_path)
     output_file_path   = find_unique_path(output_file_path)
 
     # save the state dict to a file
