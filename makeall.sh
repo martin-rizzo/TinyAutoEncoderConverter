@@ -38,14 +38,39 @@ Options:
     --float32          Build models in float32
     --clean            Clean output directory
 "
-MODEL_DIR='./original_taesd_models'
-ORIGINAL_MODEL='diffusion_pytorch_model.safetensors'
-
-SD_DIR="$MODEL_DIR/taesd"
-SDXL_DIR="$MODEL_DIR/taesdxl"
-SD3_DIR="$MODEL_DIR/taesd3"
-FLUX_DIR="$MODEL_DIR/taef1"
+SOURCE_DIR='./original_taesd_models'
 OUTPUT_DIR='./output'
+ORIGINAL_MODEL_NAME='diffusion_pytorch_model.safetensors'
+
+# directories for each model type
+declare -A MODEL_DIRS
+MODEL_DIRS[sd]="$SOURCE_DIR/taesd"
+MODEL_DIRS[sdxl]="$SOURCE_DIR/taesdxl"
+MODEL_DIRS[sd3]="$SOURCE_DIR/taesd3"
+MODEL_DIRS[flux]="$SOURCE_DIR/taef1"
+MODELS=( sd sdxl sd3 flux )
+
+# python script to build the models
+BUILD_TINY_VAE="./build_tiny_vae.sh"
+BUILD_TINY_TRANSCODER="./build_tiny_transcoder.sh"
+
+
+# function to generate all combinations of models without repeating the same pair
+generate_model_combinations() {
+    for i in "${MODELS[@]}"; do
+        for j in "${MODELS[@]}"; do
+            # skip the pairs where both models are the same
+            if [[ $i != "$j" ]]; then
+                echo "$i $j"
+            fi
+        done
+    done
+}
+
+
+#===========================================================================#
+#////////////////////////////////// MAIN ///////////////////////////////////#
+#===========================================================================#
 
 # extra parameters to pass to the build scripts
 # (by default enable color and set output directory to $OUTPUT_DIR)
@@ -75,7 +100,6 @@ for arg in "$@"; do
     esac
     shift
 done
-
 if [[ $CLEAN == true ]]; then
     echo "Cleaning output directory..."
     rm -v "$OUTPUT_DIR"/*.safetensors 
@@ -87,13 +111,34 @@ if [[ $SHOW_HELP == true ]]; then
 fi
 echo
 
-# BUILD VAEs FOR ALL MODELS
-./build_tiny_vae.sh "${EXTRA_PARAMS[@]}" --sd    "$SD_DIR"/*
-./build_tiny_vae.sh "${EXTRA_PARAMS[@]}" --sdxl  "$SDXL_DIR"/*
-./build_tiny_vae.sh "${EXTRA_PARAMS[@]}" --sd3   "$SD3_DIR"/*
-./build_tiny_vae.sh "${EXTRA_PARAMS[@]}" --flux  "$FLUX_DIR"/*
 
-# BUILD TRANSCODERS
-./build_tiny_transcoder.sh "${EXTRA_PARAMS[@]}" --blur 0.5 --from-sdxl "$SDXL_DIR/$ORIGINAL_MODEL" --to-sd   "$SD_DIR/$ORIGINAL_MODEL"
-./build_tiny_transcoder.sh "${EXTRA_PARAMS[@]}"            --from-sd   "$SD_DIR/$ORIGINAL_MODEL"   --to-sdxl "$SDXL_DIR/$ORIGINAL_MODEL"
+# BUILD VAEs FOR ALL MODELS
+for model in "${MODELS[@]}"; do
+    echo "Building VAE for $model..."
+    model_dir="${MODEL_DIRS[$model]}"
+    "$BUILD_TINY_VAE" "${EXTRA_PARAMS[@]}" "--$model" "$model_dir/"*
+done
+
+# GENERATE COMBINATIONS OF MODELS
+combinations=$(generate_model_combinations)
+
+# BUILD ALL TRANSCODERS
+while read -r from to; do
+    if [ "$from" != "$to" ]; then
+        from_original_model="${MODEL_DIRS[$from]}/$ORIGINAL_MODEL_NAME"
+        to_original_model="${MODEL_DIRS[$to]}/$ORIGINAL_MODEL_NAME"
+        echo "Building transcoder from $from to $to..."
+        "$BUILD_TINY_TRANSCODER" "${EXTRA_PARAMS[@]}" "--from-$from" "$from_original_model" "--to-$to" "$to_original_model"
+    fi
+done <<< "$combinations"
+
+# BUILD ALL TRANSCODERS WITH BLUR
+while read -r from to; do
+    if [ "$from" != "$to" ]; then
+        from_original_model="${MODEL_DIRS[$from]}/$ORIGINAL_MODEL_NAME"
+        to_original_model="${MODEL_DIRS[$to]}/$ORIGINAL_MODEL_NAME"
+        echo "Building transcoder with blur layer from $from to $to..."
+        "$BUILD_TINY_TRANSCODER" "${EXTRA_PARAMS[@]}" --blur 0.5 "--from-$from" "$from_original_model" "--to-$to" "$to_original_model"
+    fi
+done <<< "$combinations"
 
