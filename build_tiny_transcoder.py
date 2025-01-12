@@ -4,11 +4,11 @@ Purpose : Command-line tool to build a `Tiny Transcoder` model.
           (Tiny Transcoders are small models to efficiently convert latent images from one space to another)
 Author  : Martin Rizzo | <martinrizzo@gmail.com>
 Date    : Nov 27, 2024
-Repo    : https://github.com/martin-rizzo/TinyLatentModels
+Repo    : https://github.com/martin-rizzo/TinyModelsForLatentConversion
 License : MIT
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                             Tiny Latent Models
-   Build fast VAEs and latent Transcoders models (using Tiny AutoEncoders)
+                      Tiny Models for Latent Conversion
+   Build fast VAEs and latent Transcoders models using Tiny AutoEncoders
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 """
 import os

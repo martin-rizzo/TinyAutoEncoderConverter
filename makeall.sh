@@ -3,11 +3,11 @@
 # Purpose : Generate all models (VAEs and transcoders) from the Tiny AutoEncoder models.
 # Author  : Martin Rizzo | <martinrizzo@gmail.com>
 # Date    : Nov 26, 2024
-# Repo    : https://github.com/martin-rizzo/TinyLatentModels
+# Repo    : https://github.com/martin-rizzo/TinyModelsForLatentConversion
 # License : MIT
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#                             Tiny Latent Models
-#   Build fast VAEs and latent Transcoders models (using Tiny AutoEncoders)
+#                      Tiny Models for Latent Conversion
+#   Build fast VAEs and latent Transcoders models using Tiny AutoEncoders
 #
 #   Copyright (c) 2024-2025 Martin Rizzo
 #

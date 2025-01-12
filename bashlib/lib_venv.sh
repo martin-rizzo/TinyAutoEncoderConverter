@@ -3,7 +3,7 @@
 # Purpose : Bash library for managing python virtual environments in small projects.
 # Author  : Martin Rizzo | <martinrizzo@gmail.com>
 # Date    : Nov 26, 2024
-# Repo    : https://github.com/martin-rizzo/TinyLatentModels
+# Repo    : https://github.com/martin-rizzo/TinyModelsForLatentConversion
 # License : MIT
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
 #  FUNCTIONS:

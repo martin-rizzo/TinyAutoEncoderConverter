@@ -1,12 +1,12 @@
 <div align="center">
 
-# Tiny Latent Models
+# Tiny Models for Latent Conversion
 
 <p>
 <img alt="Platform"  src="https://img.shields.io/badge/platform-Linux-blue">
-<img alt="License"   src="https://img.shields.io/github/license/martin-rizzo/TinyLatentModels?color=blue">
-<img alt="Version"   src="https://img.shields.io/github/v/tag/martin-rizzo/TinyLatentModels?label=version">
-<img alt="Last"      src="https://img.shields.io/github/last-commit/martin-rizzo/TinyLatentModels">
+<img alt="License"   src="https://img.shields.io/github/license/martin-rizzo/TinyModelsForLatentConversion?color=blue">
+<img alt="Version"   src="https://img.shields.io/github/v/tag/martin-rizzo/TinyModelsForLatentConversion?label=version">
+<img alt="Last"      src="https://img.shields.io/github/last-commit/martin-rizzo/TinyModelsForLatentConversion">
 <!--
 |
 <a href="https://civitai.com/models/420163/abominable-workflows">
@@ -18,7 +18,7 @@
 </div>
 
 
-**Tiny Latent Models** offers a collection of command-line utilities designed to generate three distinct types of models. These tools facilitate the creation of: ultra-fast ComfyUI-compatible Variational Autoencoders (VAEs); latent space Transcoders for seamless conversion between different latent spaces (e.g., SDXL to SD); and a custom `.safetensors` file specifically tailored for a project currently under development.
+**Tiny Models for Latent Conversion** offers a set of command-line utilities designed to generate three distinct types of models: ultra-fast ComfyUI-compatible Variational Autoencoders (VAEs); latent space Transcoders for seamless conversion between different latent spaces (e.g., SDXL to SD); and a custom `.safetensors` file specifically tailored for a project currently under development.
 
 All generated models are based on the architecture and weights of the "Tiny AutoEncoder" models.
 
@@ -41,13 +41,13 @@ This project provides the following command-line conversion tools:
 1. **Clone the Repository:**  
    First, you need to clone this repository to your local machine.
    ```bash
-   git clone https://github.com/martin-rizzo/TinyLatentModels.git
+   git clone https://github.com/martin-rizzo/TinyModelsForLatentConversion.git
    ```
 
 2. **Download Original Models:**  
    Navigate into the cloned repository and download the necessary models from Hugging Face to the `original_taesd_models` directory:
    ```bash
-   cd TinyLatentModels
+   cd TinyModelsForLatentConversion
    wget https://huggingface.co/madebyollin/taef1/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taef1
    wget https://huggingface.co/madebyollin/taesd/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesd
    wget https://huggingface.co/madebyollin/taesd3/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesd3

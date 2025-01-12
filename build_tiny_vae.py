@@ -3,11 +3,11 @@ File    : build_tiny_vae.py
 Purpose : Command-line tool to build a tiny Variational Autoencoder (VAE) model.
 Author  : Martin Rizzo | <martinrizzo@gmail.com>
 Date    : Nov 23, 2024
-Repo    : https://github.com/martin-rizzo/TinyLatentModels
+Repo    : https://github.com/martin-rizzo/TinyModelsForLatentConversion
 License : MIT
 - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-                             Tiny Latent Models
-   Build fast VAEs and latent Transcoders models (using Tiny AutoEncoders)
+                      Tiny Models for Latent Conversion
+   Build fast VAEs and latent Transcoders models using Tiny AutoEncoders
 _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 """
 import os
