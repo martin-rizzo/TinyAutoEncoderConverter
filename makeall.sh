@@ -84,6 +84,6 @@ echo
 ./build_tiny_vae.sh "${EXTRA_PARAMS[@]}" --flux  "$FLUX_DIR"/*
 
 # BUILD TRANSCODERS
-./build_tiny_transcoder.sh "${EXTRA_PARAMS[@]}" --from-sdxl "$SDXL_DIR/$ORIGINAL_MODEL" --to-sd   "$SD_DIR/$ORIGINAL_MODEL"
-./build_tiny_transcoder.sh "${EXTRA_PARAMS[@]}" --from-sd   "$SD_DIR/$ORIGINAL_MODEL"   --to-sdxl "$SDXL_DIR/$ORIGINAL_MODEL"
+./build_tiny_transcoder.sh "${EXTRA_PARAMS[@]}" --blur 0.5 --from-sdxl "$SDXL_DIR/$ORIGINAL_MODEL" --to-sd   "$SD_DIR/$ORIGINAL_MODEL"
+./build_tiny_transcoder.sh "${EXTRA_PARAMS[@]}"            --from-sd   "$SD_DIR/$ORIGINAL_MODEL"   --to-sdxl "$SDXL_DIR/$ORIGINAL_MODEL"
 

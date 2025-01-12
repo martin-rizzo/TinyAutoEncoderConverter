@@ -20,10 +20,6 @@ import numpy as np
 from safetensors       import safe_open
 from safetensors.numpy import save_file
 
-# `from_latent_format`/`to_latent_format` parameters
-# always must contain any of the following valid formats:
-VALID_LATENT_FORMATS = ("sd", "sdxl", "sd3", "f1")
-
 # scale/shift values to apply on latents that are preprocessed by comfyUI/a1111
 # (these values ensure compatibility with that software)
 SCALE_SHIFT_BY_LATENT_FORMAT = {
@@ -32,6 +28,11 @@ SCALE_SHIFT_BY_LATENT_FORMAT = {
     "sd3" : (1.5305 , -0.0609),
     "f1"  : (0.3611 , -0.1159)
 }
+VALID_LATENT_FORMATS = tuple(SCALE_SHIFT_BY_LATENT_FORMAT.keys())
+
+# exit code to use in case of fatal error (i.e. an unrecoverable problem)
+FATAL_ERROR_CODE = 1
+
 
 #---------------------------- COLORED MESSAGES -----------------------------#
 
@@ -41,27 +42,26 @@ GREEN  = '\033[92m'
 YELLOW = '\033[93m'
 BLUE   = '\033[94m'
 CYAN   = '\033[96m'
-DEFAULT_COLOR = '\033[0m'
-FATAL_ERROR_CODE = 1
+RESET  = '\033[0m'
 
 def disable_colors():
     """Disables colored messages."""
-    global GRAY, RED, GREEN, YELLOW, BLUE, CYAN, DEFAULT_COLOR
-    GRAY, RED, GREEN, YELLOW, BLUE, CYAN, DEFAULT_COLOR = '', '', '', '', '', '', ''
+    global GRAY, RED, GREEN, YELLOW, BLUE, CYAN, RESET
+    GRAY, RED, GREEN, YELLOW, BLUE, CYAN, RESET = '', '', '', '', '', '', ''
 
 def warning(message: str, *info_messages: str) -> None:
     """Displays and logs a warning message to the standard error stream."""
-    print(f"{CYAN}[{YELLOW}WARNING{CYAN}]{YELLOW} {message}{DEFAULT_COLOR}", file=sys.stderr)
+    print(f"{CYAN}[{YELLOW}WARNING{CYAN}]{YELLOW} {message}{RESET}", file=sys.stderr)
     for info_message in info_messages:
-        print(f"          {YELLOW}{info_message}{DEFAULT_COLOR}", file=sys.stderr)
+        print(f"          {YELLOW}{info_message}{RESET}", file=sys.stderr)
     print()
 
 def error(message: str, *info_messages: str) -> None:
     """Displays and logs an error message to the standard error stream."""
     print()
-    print(f"{CYAN}[{RED}ERROR{CYAN}]{RED} {DEFAULT_COLOR}{message}", file=sys.stderr)
+    print(f"{CYAN}[{RED}ERROR{CYAN}]{RED} {RESET}{message}", file=sys.stderr)
     for info_message in info_messages:
-        print(f"          {RED}{info_message}{DEFAULT_COLOR}", file=sys.stderr)
+        print(f"          {RED}{info_message}{RESET}", file=sys.stderr)
     print()
 
 def fatal_error(message: str, *info_messages: str) -> None:
@@ -72,7 +72,7 @@ def fatal_error(message: str, *info_messages: str) -> None:
     """
     error(message)
     for info_message in info_messages:
-        print(f" {CYAN}\u24d8  {info_message}{DEFAULT_COLOR}", file=sys.stderr)
+        print(f" {CYAN}\u24d8  {info_message}{RESET}", file=sys.stderr)
     exit(FATAL_ERROR_CODE)
 
 
@@ -92,6 +92,8 @@ def get_file_name_tag(object, prefix: str = "") -> str:
         tag = "fp32"
     elif object == "f1":
         tag = "flux"
+    elif isinstance(object, float):
+        tag = f"{object:.3g}".replace('.','')
     elif object is not None:
         tag = str(object)
     else:
@@ -194,38 +196,55 @@ def load_tensors(path         : str,
     return tensors
 
 
-def shift_layers(tensors: dict,
-                 layer_prefix : str,
-                 layer_offset : int
+def shift_layers(state_dict  : dict,
+                 layer_prefix: str,
+                 layer_offset: int
                  ) -> dict:
     """
     Shifts the layers of a model by a specified offset.
 
     Args:
-        tensors       (dict): A dictionary containing the tensors to shift.
+        state_dict    (dict): The original model parameters.
         layer_prefix   (str): The prefix used to identify the layers to shift.
-        layer_offset   (int): The number of layers to shift. Positive values shift
-                              the layers forward, negative values shift them backward.
+        layer_offset   (int): The number of layers to shift. Positive values shift the
+                              layers forward, negative values shift them backward.
     Returns:
         dict: A dictionary containing the shifted tensors.
     """
-    fixed_tensors = {}
-    for key, tensor in tensors.items():
+    fixed_dict = {}
+    for key, tensor in state_dict.items():
 
         if not key.startswith(layer_prefix):
-            fixed_tensors[key] = tensor
+            fixed_dict[key] = tensor
             continue
 
         _parts = key[len(layer_prefix):].split('.',1)
         if not _parts[0].isdecimal():
-            fixed_tensors[key] = tensor
+            fixed_dict[key] = tensor
             continue
 
         new_layer_number = int(_parts[0]) + layer_offset
         dot_suffix       = f".{_parts[1]}" if len(_parts)>1 else ""
-        fixed_tensors[f"{layer_prefix}{new_layer_number}{dot_suffix}"] = tensor
+        fixed_key        = f"{layer_prefix}{new_layer_number}{dot_suffix}"
+        fixed_dict[fixed_key] = tensor
 
-    return fixed_tensors
+    return fixed_dict
+
+
+def add_xbridge_layer(state_dict: dict, gaussian_blur_sigma: float, xbridge_prefix: str, dtype=np.float32 ) -> dict:
+    """
+    Add the XBridge layer to the provided state dictionary.
+    Args:
+        state_dict            (dict): The original model parameters.
+        gaussian_blur_sigma  (float): The sigma value for Gaussian blur.
+        target_prefix          (str): The prefix used for the XBridge parameters.
+        dtype             (np.dtype): The data type for the added parameters.
+    Returns:
+        The resulting state dictionary with the XBridge layer added.
+    """
+    state_dict = state_dict.copy()
+    state_dict.update( {xbridge_prefix + "gaussian_blur_sigma": np.array(gaussian_blur_sigma, dtype=dtype)} )
+    return state_dict
 
 
 #----------------------------- IDENTIFICATION ------------------------------#
@@ -319,15 +338,17 @@ def find_taesd_with_role(input_files: list[str], role: str) -> tuple[str, str] |
 
 #-------------------------------- BUILDING ---------------------------------#
 
-ENCODER_PREFIX="encoder."
-DECODER_PREFIX="decoder."
+DECODER_PREFIX="transd."
+ENCODER_PREFIX="transe."
+XBRIDGE_PREFIX="transx."
 
-def build_tiny_transcoder(encoder_path_and_prefix : tuple[str, str],
-                          decoder_path_and_prefix : tuple[str, str],
-                          use_unnormalized_adapter: bool,
-                          input_latent_format     : str,
-                          output_latent_format    : str,
-                          dtype                   : np.dtype = None
+def build_tiny_transcoder(encoder_path_and_prefix    : tuple[str, str],
+                          decoder_path_and_prefix    : tuple[str, str],
+                          use_unnormalized_adapter   : bool,
+                          input_latent_format        : str,
+                          output_latent_format       : str,
+                          xbridge_gaussian_blur_sigma: float,
+                          dtype                      : np.dtype = None
                           ) -> dict:
     assert input_latent_format  in VALID_LATENT_FORMATS, f"Invalid input_latent_format '{input_latent_format}'"
     assert output_latent_format in VALID_LATENT_FORMATS, f"Invalid output_latent_format '{output_latent_format}'"
@@ -356,10 +377,11 @@ def build_tiny_transcoder(encoder_path_and_prefix : tuple[str, str],
     if f"{DECODER_PREFIX}0.weight" in transcoder_tensors:
         transcoder_tensors = shift_layers(transcoder_tensors, layer_prefix=DECODER_PREFIX, layer_offset=1)
 
-    # if the transcoder converted from SDXL to SD,
-    # then add a gaussian blur process to remove high frequency noise
-    if input_latent_format=="sdxl" and output_latent_format=="sd":
-        transcoder_tensors["gaussian_blur_sigma"] = np.array( [0.5], dtype=np.float32 )
+    # if gaussian blur is provided, add the xbridge layer
+    if xbridge_gaussian_blur_sigma:
+        transcoder_tensors = add_xbridge_layer(transcoder_tensors,
+                                               gaussian_blur_sigma = xbridge_gaussian_blur_sigma,
+                                               xbridge_prefix      = XBRIDGE_PREFIX)
 
     # insert a compatible adapter to match the input/output latent formats of comfyui/a1111
     if use_unnormalized_adapter:
@@ -370,8 +392,8 @@ def build_tiny_transcoder(encoder_path_and_prefix : tuple[str, str],
         transcoder_tensors["unnormalized_adapter_out.scale_factor"] = np.array( [scale_shift[0]], dtype=np.float32 )
         transcoder_tensors["unnormalized_adapter_out.shift_factor"] = np.array( [scale_shift[1]], dtype=np.float32 )
 
-    # convert the data type (if necessary)
-    if dtype is not None:
+    # convert the data type (if required)
+    if dtype:
         converted_tensors = {}
         for key, tensor in transcoder_tensors.items():
             converted_tensors[key] = tensor.astype(dtype) if isinstance(tensor, np.ndarray) else tensor
@@ -396,21 +418,22 @@ def main(args: list=None, parent_script: str=None):
         description="Build a Tiny Transcoder model for using in ComfyUI and convert latent images.",
         formatter_class=argparse.RawTextHelpFormatter,
         )
-    parser.add_argument("-c", "--color"     , action="store_true" , help="use color output when connected to a terminal")
-    parser.add_argument("--color-always"    , action="store_true" , help="always use color output")
+    parser.add_argument("-c", "--color"   , action="store_true" , help="use color output when connected to a terminal")
+    parser.add_argument(  "--color-always", action="store_true" , help="always use color output")
     _group = parser.add_mutually_exclusive_group(required=True)
-    _group.add_argument(     "--from-sd"    , help="the Tiny AutoEncoder model with a SD1.5 decoder")
-    _group.add_argument(     "--from-sdxl"  , help="the Tiny AutoEncoder model with a SDXL decoder")
-    _group.add_argument(     "--from-sd3"   , help="the Tiny AutoEncoder model with a SD3 decoder")
-    _group.add_argument(     "--from-flux"  , help="the Tiny AutoEncoder model with a Flux decoder")
+    _group.add_argument(     "--from-sd"  , help="the Tiny AutoEncoder model with a SD1.5 decoder")
+    _group.add_argument(     "--from-sdxl", help="the Tiny AutoEncoder model with a SDXL decoder")
+    _group.add_argument(     "--from-sd3" , help="the Tiny AutoEncoder model with a SD3 decoder")
+    _group.add_argument(     "--from-flux", help="the Tiny AutoEncoder model with a Flux decoder")
     _group = parser.add_mutually_exclusive_group(required=True)
-    _group.add_argument(     "--to-sd"      , help="the Tiny AutoEncoder model with a SD1.5 encoder")
-    _group.add_argument(     "--to-sdxl"    , help="the Tiny AutoEncoder model with a SDXL encoder")
-    _group.add_argument(     "--to-sd3"     , help="the Tiny AutoEncoder model with a SD3 encoder")
-    _group.add_argument(     "--to-flux"    , help="the Tiny AutoEncoder model with a Flux encoder")
+    _group.add_argument(     "--to-sd"    , help="the Tiny AutoEncoder model with a SD1.5 encoder")
+    _group.add_argument(     "--to-sdxl"  , help="the Tiny AutoEncoder model with a SDXL encoder")
+    _group.add_argument(     "--to-sd3"   , help="the Tiny AutoEncoder model with a SD3 encoder")
+    _group.add_argument(     "--to-flux"  , help="the Tiny AutoEncoder model with a Flux encoder")
     _group = parser.add_mutually_exclusive_group()
-    _group.add_argument(     "--float16"    , dest="dtype", action="store_const", const=np.float16, help="store the built transcoder as float16")
-    _group.add_argument(     "--float32"    , dest="dtype", action="store_const", const=np.float32, help="store the built transcoder as float32") 
+    _group.add_argument(     "--float16"  , dest="dtype", action="store_const", const=np.float16, help="store the built transcoder as float16")
+    _group.add_argument(     "--float32"  , dest="dtype", action="store_const", const=np.float32, help="store the built transcoder as float32")
+    parser.add_argument(     "--blur"     , type=float, help="the gaussian blur sigma to apply in the bridge between decoder and encoder")
     args = parser.parse_args(args)
 
     # determine if color should be used
@@ -469,20 +492,22 @@ def main(args: list=None, parent_script: str=None):
 
     print(f' - Encoder {'['+from_latent_format+']':<6} | File: "{os.path.basename(encoder_path_and_prefix[0])}" | Prefix: `{encoder_path_and_prefix[1]}`')
     print(f' - Decoder {'['+to_latent_format+']'  :<6} | File: "{os.path.basename(decoder_path_and_prefix[0])}" | Prefix: `{decoder_path_and_prefix[1]}`')
-    state_dict = build_tiny_transcoder(encoder_path_and_prefix  = encoder_path_and_prefix,
-                                       decoder_path_and_prefix  = decoder_path_and_prefix,
-                                       use_unnormalized_adapter = True,
-                                       input_latent_format      = from_latent_format,
-                                       output_latent_format     = to_latent_format,
-                                       dtype                    = args.dtype,
+    state_dict = build_tiny_transcoder(encoder_path_and_prefix     = encoder_path_and_prefix,
+                                       decoder_path_and_prefix     = decoder_path_and_prefix,
+                                       use_unnormalized_adapter    = True,
+                                       input_latent_format         = from_latent_format,
+                                       output_latent_format        = to_latent_format,
+                                       xbridge_gaussian_blur_sigma = args.blur,
+                                       dtype                       = args.dtype,
                                        )
 
     # generate a unique name for the output file
     # (the name is based on the model class names and data type)
     from_latent_format = get_file_name_tag(from_latent_format, prefix='_')
     to_latent_format   = get_file_name_tag(to_latent_format  , prefix='_')
+    blur               = get_file_name_tag(args.blur         , prefix='_blur')
     dtype_name         = get_file_name_tag(args.dtype        , prefix='_')
-    output_file_path   = f"transcoder_from{from_latent_format}_to{to_latent_format}{dtype_name}.safetensors"
+    output_file_path   = f"transcoder{blur}_from{from_latent_format}_to{to_latent_format}{dtype_name}.safetensors"
     output_file_path   = find_unique_path(output_file_path)
 
     # save the state dict to a file
