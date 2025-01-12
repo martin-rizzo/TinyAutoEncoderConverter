@@ -3,11 +3,11 @@
 # Purpose : Wrapper for `build_tiny_vae.py` that automatically handles the python virtual env
 # Author  : Martin Rizzo | <martinrizzo@gmail.com>
 # Date    : Nov 26, 2024
-# Repo    : https://github.com/martin-rizzo/TinyAutoEncoderConverter
+# Repo    : https://github.com/martin-rizzo/TinyLatentModels
 # License : MIT
 #- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
-#                          Tiny AutoEncoder Converter
-#   Command-line tool to build VAEs and Transcoders (from Tiny AutoEncoders).
+#                             Tiny Latent Models
+#   Build fast VAEs and latent Transcoders models (using Tiny AutoEncoders)
 #_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
 SCRIPT_NAME=$(basename "${BASH_SOURCE[0]}" .sh)         # script name without extension
 SCRIPT_DIR=$(realpath "$(dirname "${BASH_SOURCE[0]}")") # script directory

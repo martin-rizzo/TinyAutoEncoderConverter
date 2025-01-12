@@ -1,12 +1,12 @@
 <div align="center">
 
-# Tiny AutoEncoder Converter
+# Tiny Latent Models
 
 <p>
 <img alt="Platform"  src="https://img.shields.io/badge/platform-Linux-blue">
-<img alt="License"   src="https://img.shields.io/github/license/martin-rizzo/TinyAutoEncoderConverter?color=blue">
-<img alt="Version"   src="https://img.shields.io/github/v/tag/martin-rizzo/TinyAutoEncoderConverter?label=version">
-<img alt="Last"      src="https://img.shields.io/github/last-commit/martin-rizzo/TinyAutoEncoderConverter">
+<img alt="License"   src="https://img.shields.io/github/license/martin-rizzo/TinyLatentModels?color=blue">
+<img alt="Version"   src="https://img.shields.io/github/v/tag/martin-rizzo/TinyLatentModels?label=version">
+<img alt="Last"      src="https://img.shields.io/github/last-commit/martin-rizzo/TinyLatentModels">
 <!--
 |
 <a href="https://civitai.com/models/420163/abominable-workflows">
@@ -18,12 +18,14 @@
 </div>
 
 
-**Tiny AutoEncoder Converter** is a command-line utility that converts Tiny AutoEncoders into comfyui-compatible Variational AutoEncoders (VAEs) and Transcoders.
+**Tiny Latent Models** offers a collection of command-line utilities designed to generate three distinct types of models. These tools facilitate the creation of: ultra-fast ComfyUI-compatible Variational Autoencoders (VAEs); latent space Transcoders for seamless conversion between different latent spaces (e.g., SDXL to SD); and a custom `.safetensors` file specifically tailored for a project currently under development.
+
+All generated models are based on the architecture and weights of the "Tiny AutoEncoder" models.
 
 
 ## What are Tiny AutoEncoders?
 
-Tiny AutoEncoders (TAEs) are highly optimized autoencoders that share the same latent space as Stable Diffusion and Flux VAEs.  This enables significantly faster and more resource-efficient image encoding and decoding.  These models were developed and trained by Ollin Boer Bohan, to whom I express my sincere gratitude. You can find Ollin's original implementation and pre-trained models in the [Tiny AutoEncoder Repository](https://github.com/madebyollin/taesd).
+Tiny AutoEncoders (TAEs) are highly optimized autoencoders that share the same latent space as Stable Diffusion and Flux VAEs.  This enables significantly faster and more resource-efficient image encoding and decoding.  These models were developed and trained by Ollin Boer Bohan, to whom I extend my sincere gratitude. You can find Ollin's original implementation and pre-trained models in the [Tiny AutoEncoder Repository](https://github.com/madebyollin/taesd).
 
 
 ## Command-Line Tools
@@ -31,6 +33,7 @@ Tiny AutoEncoders (TAEs) are highly optimized autoencoders that share the same l
 This project provides the following command-line conversion tools:
 - `build_tiny_vae.py`: Generates a comfyui-compatible VAE model from a Tiny AutoEncoder.
 - `build_tiny_transcoder.py`: Creates a transcoder enabling latent space conversion between different models (e.g., SDXL to SD).
+- `build_auxiliary_model.py`: Generates a custom `.safetensors` model for an ongoing project.
 
 
 ## Installation and Usage
@@ -38,35 +41,40 @@ This project provides the following command-line conversion tools:
 1. **Clone the Repository:**  
    First, you need to clone this repository to your local machine.
    ```bash
-   git clone https://github.com/martin-rizzo/TinyAutoEncoderConverter.git
+   git clone https://github.com/martin-rizzo/TinyLatentModels.git
    ```
 
 2. **Download Original Models:**  
-   Navigate into the cloned directory and download the necessary models from Hugging Face.
+   Navigate into the cloned repository and download the necessary models from Hugging Face to the `original_taesd_models` directory:
    ```bash
-   cd TinyAutoEncoderConverter
+   cd TinyLatentModels
    wget https://huggingface.co/madebyollin/taef1/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taef1
    wget https://huggingface.co/madebyollin/taesd/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesd
    wget https://huggingface.co/madebyollin/taesd3/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesd3
    wget https://huggingface.co/madebyollin/taesdx/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesdx   
    ```
 
-4. **Run the Bash Script:**  
+3. **Run the Bash Script:**  
    Execute the `makeall.sh` script to generate.
    ```bash
    ./makeall.sh
    ```
+
+
 ## Output
 
-When running the general `makeall.sh` script, it will generate several files with the following naming format:
+When running the general `makeall.sh` script, it will generate several files in the `output` directory, including VAE models and transcoders for different latent spaces. The generated files will have names like:
 - `tiny_vae_*.safetensors`: VAE models compatible with ComfyUI.
 - `transcoder_from_*_to_*.safetensors`: Transcoder model files.
+- `auxiliary_model.safetensors`: Custom auxiliary model for a specific project.
+
 
 ## License
 
-**Copyright (c) 2024 Martin Rizzo**  
+**Copyright (c) 2024-2025 Martin Rizzo**  
 This project is licensed under the MIT license.  
 Details can be found in the ["LICENSE"](LICENSE) file.
+
 
 ## Disclaimer
 
