@@ -54,8 +54,8 @@ This project provides the following command-line conversion tools:
    wget https://huggingface.co/madebyollin/taesdx/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesdx   
    ```
 
-3. **Create the Virtual Environment and Install Dependencies:**
-   The build_tiny_vae.sh wrapper script came with a virtual environment setup argument, so you don't need to create a virtual environment manually.
+3. **Create the Virtual Environment and Install Dependencies:**  
+   The `build_tiny_vae.sh` script came with a virtual environment setup argument, so you don't need to create a virtual environment manually.
    ```bash
    ./build_tiny_vae.sh --create-venv
    ```
