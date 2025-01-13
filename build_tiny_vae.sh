@@ -77,7 +77,7 @@ remove_venv() {
     if [[ ! -d "$VENV_DIR" ]]; then
         fatal_error "No 'venv' directory found." \
                     "You must create a virtual environment before removing it." \
-                    "Use the '--create-venv' option to create a new one."
+                    "Use the '$SCRIPT_NAME.sh --create-venv' option to create a new one."
     fi
     rm -rf "$VENV_DIR"
     echo "Virtual environment removed."
@@ -87,12 +87,12 @@ remove_venv() {
 activate_venv() {
     if [[ ! -f "$VENV_DIR/bin/activate" ]]; then
         fatal_error "The virtual environment does not exist." \
-                    "you can use --create-venv to create it"
+                    "you can use '$SCRIPT_NAME.sh --create-venv' to create it"
     fi
     # shellcheck disable=SC1091
     if ! source "$VENV_DIR/bin/activate"; then
         fatal_error "Error when activating virtual environment, it might be corrupted." \
-                    "You can use --recreate-venv to recreate the virtual environment."
+                    "You can use '$SCRIPT_NAME.sh --recreate-venv' to recreate the virtual environment."
     fi
 }
 

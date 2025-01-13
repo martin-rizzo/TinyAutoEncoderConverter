@@ -42,20 +42,26 @@ This project provides the following command-line conversion tools:
    First, you need to clone this repository to your local machine.
    ```bash
    git clone https://github.com/martin-rizzo/TinyModelsForLatentConversion.git
+   cd TinyModelsForLatentConversion
    ```
 
 2. **Download Original Models:**  
    Navigate into the cloned repository and download the necessary models from Hugging Face to the `original_taesd_models` directory:
    ```bash
-   cd TinyModelsForLatentConversion
    wget https://huggingface.co/madebyollin/taef1/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taef1
    wget https://huggingface.co/madebyollin/taesd/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesd
    wget https://huggingface.co/madebyollin/taesd3/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesd3
    wget https://huggingface.co/madebyollin/taesdx/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesdx   
    ```
 
-3. **Run the Bash Script:**  
-   Execute the `makeall.sh` script to generate.
+3. **Create the Virtual Environment and Install Dependencies:**
+   The build_tiny_vae.sh wrapper script came with a virtual environment setup argument, so you don't need to create a virtual environment manually.
+   ```bash
+   ./build_tiny_vae.sh --create-venv
+   ```
+
+4. **Run the Bash Script:**  
+   Execute the `makeall.sh` script to generate all VAEs and transcoders automatically:
    ```bash
    ./makeall.sh
    ```
