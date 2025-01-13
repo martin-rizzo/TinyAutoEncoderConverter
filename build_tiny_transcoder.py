@@ -20,15 +20,14 @@ import numpy as np
 from safetensors       import safe_open
 from safetensors.numpy import save_file
 
-# scale/shift values to apply on latents that are preprocessed by comfyUI/a1111
-# (these values ensure compatibility with that software)
-SCALE_SHIFT_BY_LATENT_FORMAT = {
-    "sd"  : (0.18215,  0.    ),
-    "sdxl": (0.13025,  0.    ),
-    "sd3" : (1.5305 , -0.0609),
-    "f1"  : (0.3611 , -0.1159)
+# scale_factor/shift_factor values used for the latent space of different models
+SCALE_AND_SHIFT_BY_LATENT_FORMAT = {
+    "sd"  : (0.18215, 0.    ),
+    "sdxl": (0.13025, 0.    ),
+    "sd3" : (1.5305 , 0.0609),
+    "f1"  : (0.3611 , 0.1159)
 }
-VALID_LATENT_FORMATS = tuple(SCALE_SHIFT_BY_LATENT_FORMAT.keys())
+VALID_LATENT_FORMATS = tuple(SCALE_AND_SHIFT_BY_LATENT_FORMAT.keys())
 
 # exit code to use in case of fatal error (i.e. an unrecoverable problem)
 FATAL_ERROR_CODE = 1
@@ -79,7 +78,7 @@ def fatal_error(message: str, *info_messages: str) -> None:
 #--------------------------------- HELPERS ---------------------------------#
 
 def is_terminal_output():
-    """Return True ifthe standard output is connected to a terminal."""
+    """Return True if the standard output is connected to a terminal."""
     return sys.stdout.isatty()
 
 
@@ -231,22 +230,6 @@ def shift_layers(state_dict  : dict,
     return fixed_dict
 
 
-def add_xbridge_layer(state_dict: dict, gaussian_blur_sigma: float, xbridge_prefix: str, dtype=np.float32 ) -> dict:
-    """
-    Add the XBridge layer to the provided state dictionary.
-    Args:
-        state_dict            (dict): The original model parameters.
-        gaussian_blur_sigma  (float): The sigma value for Gaussian blur.
-        target_prefix          (str): The prefix used for the XBridge parameters.
-        dtype             (np.dtype): The data type for the added parameters.
-    Returns:
-        The resulting state dictionary with the XBridge layer added.
-    """
-    state_dict = state_dict.copy()
-    state_dict.update( {xbridge_prefix + "gaussian_blur_sigma": np.array(gaussian_blur_sigma, dtype=dtype)} )
-    return state_dict
-
-
 #----------------------------- IDENTIFICATION ------------------------------#
 
 def is_taesd(state_dict: dict) -> bool:
@@ -336,20 +319,80 @@ def find_taesd_with_role(input_files: list[str], role: str) -> tuple[str, str] |
     return None
 
 
+#------------------------- TRANSCODER EXTRA LAYERS -------------------------#
+
+def insert_xbridge_layer(state_dict         : dict, *,
+                         gaussian_blur_sigma: float,
+                         target_prefix      : str,
+                         dtype              : np.dtype = np.float32
+                         ):
+    """
+    Add the XBridge layer to the provided state dictionary.
+    Args:
+        state_dict            (dict): The state dictionary of the model where the XBridge layer will be added.
+        gaussian_blur_sigma  (float): The sigma value for Gaussian blur.
+        target_prefix          (str): The prefix used for the XBridge parameters.
+        dtype             (np.dtype): The data type for the added parameters. Default is float32.
+    """
+    state_dict.update( {target_prefix + "gaussian_blur_sigma": np.array(gaussian_blur_sigma, dtype=dtype)} )
+
+
+def insert_emulation_layer(state_dict   : dict, *,
+                           scale_factor : float,
+                           shift_factor : float,
+                           target_prefix: str,
+                           dtype        : np.dtype = np.float32
+                           ):
+    """
+    Adds emulation layer with scale and shift factors to emulate standard encoder/decoder ranges.
+
+    Tiny AutoEncoder has a different decoder/encoder in/out ranges compared to the standard
+    decoder/encoder. Therefore if you want the transcoder to behave like a standard decoder+encoder,
+    then you need to add input/output emulation layers to bring those ranges from/to the standard ones.
+
+    Args:
+        state_dict     (dict): The state dictionary of the model where the emulation layer will be added.
+        scale_factor  (float): The scale factor for the emulation layer.
+        shift_factor  (float): The shift factor for the emulation layer.
+        target_prefix   (str): The prefix used for the emulation layer parameters.
+        dtype      (np.dtype): The data type for the added parameters. Default is float32.
+    """
+    state_dict.update( {target_prefix + "scale_factor": np.array(scale_factor, dtype=dtype)} )
+    state_dict.update( {target_prefix + "shift_factor": np.array(shift_factor, dtype=dtype)} )
+
+
 #-------------------------------- BUILDING ---------------------------------#
 
-DECODER_PREFIX="transd."
-ENCODER_PREFIX="transe."
-XBRIDGE_PREFIX="transx."
+# required layers
+DECODER_PREFIX = "transd."
+ENCODER_PREFIX = "transe."
+# optional, non-trainable layers
+XBRIDGE_PREFIX          = "transx."
+INPUT_EMULATION_PREFIX  = "in_emu."
+OUTPUT_EMULATION_PREFIX = "out_emu."
 
-def build_tiny_transcoder(encoder_path_and_prefix    : tuple[str, str],
-                          decoder_path_and_prefix    : tuple[str, str],
-                          use_unnormalized_adapter   : bool,
-                          input_latent_format        : str,
-                          output_latent_format       : str,
-                          xbridge_gaussian_blur_sigma: float,
-                          dtype                      : np.dtype = None
+def build_tiny_transcoder(*,
+                          encoder_path_and_prefix         : tuple[str, str],
+                          decoder_path_and_prefix         : tuple[str, str],
+                          input_latent_format             : str,
+                          output_latent_format            : str,
+                          xbridge_gaussian_blur_sigma     : float,
+                          include_decoderencoder_emulation: bool,
+                          dtype                           : np.dtype = None
                           ) -> dict:
+    """
+    Builds a Tiny Transcoder model by combining an encoder and a decoder.
+    Args:
+        encoder_path_and_prefix         : A tuple containing the path to the encoder model file and its tensor prefix.
+        decoder_path_and_prefix         : A tuple containing the path to the decoder model file and its tensor prefix.
+        input_latent_format             : The format of the input latent space. (e.g., "sd", ¨sdxl")
+        output_latent_format            : The format of the output latent space. (e.g., "sd", ¨sdxl")
+        xbridge_gaussian_blur_sigma     : The sigma value for Gaussian blur in the XBridge layer. (None for no XBridge layer)
+        include_decoderencoder_emulation: If True, adds a layer to emulate standard decoder+encoder ranges.
+        dtype                           : The data type for the parameters. Default is float32.
+    Returns:
+        The state_dict of the Tiny Transcoder model.
+    """
     assert input_latent_format  in VALID_LATENT_FORMATS, f"Invalid input_latent_format '{input_latent_format}'"
     assert output_latent_format in VALID_LATENT_FORMATS, f"Invalid output_latent_format '{output_latent_format}'"
 
@@ -379,18 +422,22 @@ def build_tiny_transcoder(encoder_path_and_prefix    : tuple[str, str],
 
     # if gaussian blur is provided, add the xbridge layer
     if xbridge_gaussian_blur_sigma:
-        transcoder_tensors = add_xbridge_layer(transcoder_tensors,
-                                               gaussian_blur_sigma = xbridge_gaussian_blur_sigma,
-                                               xbridge_prefix      = XBRIDGE_PREFIX)
+        insert_xbridge_layer(transcoder_tensors,
+                             gaussian_blur_sigma = xbridge_gaussian_blur_sigma,
+                             target_prefix       = XBRIDGE_PREFIX)
 
-    # insert a compatible adapter to match the input/output latent formats of comfyui/a1111
-    if use_unnormalized_adapter:
-        scale_shift = SCALE_SHIFT_BY_LATENT_FORMAT.get(input_latent_format, (1.,0.))
-        transcoder_tensors["unnormalized_adapter_in.scale_factor"]  = np.array( [scale_shift[0]], dtype=np.float32 )
-        transcoder_tensors["unnormalized_adapter_in.shift_factor"]  = np.array( [scale_shift[1]], dtype=np.float32 )
-        scale_shift = SCALE_SHIFT_BY_LATENT_FORMAT.get(output_latent_format, (1.,0.))
-        transcoder_tensors["unnormalized_adapter_out.scale_factor"] = np.array( [scale_shift[0]], dtype=np.float32 )
-        transcoder_tensors["unnormalized_adapter_out.shift_factor"] = np.array( [scale_shift[1]], dtype=np.float32 )
+    # add input/output emulation layers to emulate standard decoder+encoder in/out ranges
+    if include_decoderencoder_emulation:
+        scale_and_shift = SCALE_AND_SHIFT_BY_LATENT_FORMAT[input_latent_format]
+        insert_emulation_layer(transcoder_tensors,
+                               scale_factor  = scale_and_shift[0],
+                               shift_factor  = scale_and_shift[1],
+                               target_prefix = INPUT_EMULATION_PREFIX)
+        scale_and_shift = SCALE_AND_SHIFT_BY_LATENT_FORMAT[output_latent_format]
+        insert_emulation_layer(transcoder_tensors,
+                               scale_factor  = scale_and_shift[0],
+                               shift_factor  = scale_and_shift[1],
+                               target_prefix = OUTPUT_EMULATION_PREFIX)
 
     # convert the data type (if required)
     if dtype:
@@ -491,15 +538,16 @@ def main(args: list=None, parent_script: str=None):
     if not decoder_path_and_prefix:
         fatal_error("No TAESD decoder model found.")
 
+    # build the tiny transcoder model using the encoder and decoder that were found
     print(f' - Encoder {'['+from_latent_format+']':<6} | File: "{os.path.basename(encoder_path_and_prefix[0])}" | Prefix: `{encoder_path_and_prefix[1]}`')
     print(f' - Decoder {'['+to_latent_format+']'  :<6} | File: "{os.path.basename(decoder_path_and_prefix[0])}" | Prefix: `{decoder_path_and_prefix[1]}`')
-    state_dict = build_tiny_transcoder(encoder_path_and_prefix     = encoder_path_and_prefix,
-                                       decoder_path_and_prefix     = decoder_path_and_prefix,
-                                       use_unnormalized_adapter    = True,
-                                       input_latent_format         = from_latent_format,
-                                       output_latent_format        = to_latent_format,
-                                       xbridge_gaussian_blur_sigma = args.blur,
-                                       dtype                       = args.dtype,
+    state_dict = build_tiny_transcoder(encoder_path_and_prefix          = encoder_path_and_prefix,
+                                       decoder_path_and_prefix          = decoder_path_and_prefix,
+                                       input_latent_format              = from_latent_format,
+                                       output_latent_format             = to_latent_format,
+                                       xbridge_gaussian_blur_sigma      = args.blur,
+                                       include_decoderencoder_emulation = True,
+                                       dtype                            = args.dtype,
                                        )
 
     # generate a unique name for the output file
