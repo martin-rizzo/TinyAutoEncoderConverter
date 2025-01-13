@@ -46,13 +46,11 @@ This project provides the following command-line conversion tools:
    ```
 
 2. **Download Original Models:**  
-   Navigate into the cloned repository and download the necessary models from Hugging Face to the `original_taesd_models` directory:
+   Download the necessary TAESD models from Hugging Face to the `original_taesd_models` directory:
    ```bash
-   wget https://huggingface.co/madebyollin/taef1/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taef1
-   wget https://huggingface.co/madebyollin/taesd/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesd
-   wget https://huggingface.co/madebyollin/taesd3/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesd3
-   wget https://huggingface.co/madebyollin/taesdx/blob/main/diffusion_pytorch_model.safetensors -P original_taesd_models/taesdx   
+   ./download_original_models.sh
    ```
+   For more information on what TAESD models are needed and how to download them manually, refer to the [original_taesd_models/README.md](original_taesd_models/README.md) documentation.
 
 3. **Create the Virtual Environment and Install Dependencies:**  
    The `build_tiny_vae.sh` script came with a virtual environment setup argument, so you don't need to create a virtual environment manually.
