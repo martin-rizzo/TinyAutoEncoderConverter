@@ -94,11 +94,11 @@ for arg in "$@"; do
             SHOW_HELP=true
             ;;
         *)
-            echo "ERROR: Unknown argument $arg"
+            echo "ERROR: Unknown argument '$arg'"
+            echo "use $0 -h for help"
             exit 1
             ;;
     esac
-    shift
 done
 if [[ $CLEAN == true ]]; then
     echo "Cleaning output directory..."
