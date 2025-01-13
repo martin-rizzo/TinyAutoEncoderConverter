@@ -36,6 +36,7 @@ Usage: $0 [-h|--help]
 Downloads the original TAESD models from Hugging Face.
 
 Options:
+    --wget        Use wget instead of curl for downloading
     -h, --help    Show this help message and exit
 "
 
@@ -51,6 +52,18 @@ MODEL_URLS[taef1]="https://huggingface.co/madebyollin/taef1/resolve/main/diffusi
 MODELS=( taesd taesdxl taesd3 taef1 )
 
 
+# simple function to confirm an action before proceeding
+function confirm_action() {
+    local message=$1 question=$2
+    echo -ne "\n$message\n$question (y/N): "
+    read -r  choice
+    case $choice in
+        y|Y|yes|Yes|YES)
+            return 0 # success
+            ;;
+    esac
+    return 1 # failure
+}
 
 #===========================================================================#
 #////////////////////////////////// MAIN ///////////////////////////////////#
@@ -58,9 +71,13 @@ MODELS=( taesd taesdxl taesd3 taef1 )
 
 # loop through the arguments and set the corresponding parameters
 SHOW_HELP=false
+DOWNLOADER='curl -#'
 while [[ $# -gt 0 ]]; do
     arg=$1
     case "$arg" in
+        --wget)
+            DOWNLOADER='wget -nv'
+            ;;
         -h|--help)
             SHOW_HELP=true
             ;;
@@ -83,17 +100,18 @@ if [[ ! -d "$OUTPUT_DIR" ]]; then
     exit 1
 fi
 
-# confirmation prompt
-echo "This script will download the TAESD models from Hugging Face hub and"
-echo "save them to the '$OUTPUT_DIR' directory."
-read -r -p "Do you want to continue? (y/N): " choice
-choice=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
-if [[ "$choice" != "y" ]]; then
+
+# confirmation for checking that the user agrees with the download.
+if ! confirm_action \
+    "This script will download the TAESD models from Hugging Face hub and \nsave them to the '$OUTPUT_DIR' directory." \
+    "Do you want to continue?"
+then
     echo "Download cancelled by user."
     exit 0
 fi
 
 # download models
+echo
 echo "Starting download..."
 for model in "${MODELS[@]}"; do
     model_url="${MODEL_URLS[$model]}"
@@ -108,19 +126,26 @@ for model in "${MODELS[@]}"; do
         continue
     fi
 
-    # verify if model file already exists in local directory
+    # check if model file already exists in local directory
+    echo
     if [[ -f "$dest_file" ]]; then
-        echo "File '$filename' already exists in '$model_output_dir'."
-        echo "Skipping download for model '$model'."
+        echo "Overwriting '$filename' in $model directory..."
+    elif [[ ! -e "$dest_file" ]]; then
+        echo "Downloading '$filename' to '$model_output_dir'..."
+    else
+        echo "Cannot download model file. Skipping..."
         continue
     fi
-    echo "Downloading '$filename' to '$model_dest_dir'..."
-    if ! wget "$model_url" -O "$dest_file"; then
+
+    # use wget to download model file
+    #if ! wget -nv "$model_url" -O "$dest_file"; then
+    if ! $DOWNLOADER "$model_url" -o "$dest_file"; then
         echo "Error downloading '$filename'. Please check the URL and your internet connection."
         exit 1
     fi
-    echo "Download of '$filename' complete."
+    echo "Download of $model model complete."
 
 done
+echo
 echo "All downloads completed."
 
