@@ -44,10 +44,10 @@ OUTPUT_DIR="./original_taesd_models"
 
 # URLs for each TAESD model type
 declare -A MODEL_URLS
-MODEL_URLS[taesd]="https://huggingface.co/madebyollin/taesd/blob/main/diffusion_pytorch_model.safetensors"
-MODEL_URLS[taesdxl]="https://huggingface.co/madebyollin/taesdxl/blob/main/diffusion_pytorch_model.safetensors"
-MODEL_URLS[taesd3]="https://huggingface.co/madebyollin/taesd3/blob/main/diffusion_pytorch_model.safetensors"
-MODEL_URLS[taef1]="https://huggingface.co/madebyollin/taef1/blob/main/diffusion_pytorch_model.safetensors"
+MODEL_URLS[taesd]="https://huggingface.co/madebyollin/taesd/resolve/main/diffusion_pytorch_model.safetensors"
+MODEL_URLS[taesdxl]="https://huggingface.co/madebyollin/taesdxl/resolve/main/diffusion_pytorch_model.safetensors"
+MODEL_URLS[taesd3]="https://huggingface.co/madebyollin/taesd3/resolve/main/diffusion_pytorch_model.safetensors"
+MODEL_URLS[taef1]="https://huggingface.co/madebyollin/taef1/resolve/main/diffusion_pytorch_model.safetensors"
 MODELS=( taesd taesdxl taesd3 taef1 )
 
 
