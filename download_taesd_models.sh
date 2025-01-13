@@ -71,12 +71,12 @@ function confirm_action() {
 
 # loop through the arguments and set the corresponding parameters
 SHOW_HELP=false
-DOWNLOADER='curl -#'
+DOWNLOADER='curl -# -L -o'
 while [[ $# -gt 0 ]]; do
     arg=$1
     case "$arg" in
         --wget)
-            DOWNLOADER='wget -nv'
+            DOWNLOADER='wget -nv -O'
             ;;
         -h|--help)
             SHOW_HELP=true
@@ -138,8 +138,8 @@ for model in "${MODELS[@]}"; do
     fi
 
     # use wget to download model file
-    #if ! wget -nv "$model_url" -O "$dest_file"; then
-    if ! $DOWNLOADER "$model_url" -o "$dest_file"; then
+    #if ! wget -nv -O "$dest_file" "$model_url" ; then
+    if ! $DOWNLOADER "$dest_file" "$model_url"; then
         echo "Error downloading '$filename'. Please check the URL and your internet connection."
         exit 1
     fi
