@@ -53,6 +53,7 @@ MODELS=( sd sdxl sd3 flux )
 # python script to build the models
 BUILD_TINY_VAE="./build_tiny_vae.sh"
 BUILD_TINY_TRANSCODER="./build_tiny_transcoder.sh"
+BUILD_AUXILIARY="./build_auxiliary.sh"
 
 
 # function to generate all combinations of models without repeating the same pair
@@ -65,6 +66,14 @@ generate_model_combinations() {
             fi
         done
     done
+}
+
+# function to check if the provided parameters contain data type references
+contains_dtype_parameter() {
+    for param in "$@"; do
+        [[ "$param" == "--float"* ]] && return 0 # found a parameter that contains "float"
+    done
+    return 1 # no parameter found that contains "float"
 }
 
 
@@ -141,4 +150,22 @@ while read -r from to; do
         "$BUILD_TINY_TRANSCODER" "${EXTRA_PARAMS[@]}" --blur 0.5 "--from-$from" "$from_original_model" "--to-$to" "$to_original_model"
     fi
 done <<< "$combinations"
+
+# BUILD AUXILARY SAFETENSORS
+# (ONLY WHEN DATA TYPES ARE NOT SPECIFIED)
+if contains_dtype_parameter "${EXTRA_PARAMS[@]}"; then
+    echo "Skipping auxiliary safetensors build, because float16 or float32 was specified."
+else
+    echo "Building auxiliary safetensors..."
+    "$BUILD_AUXILIARY" --color --output-dir "$OUTPUT_DIR" --float32 \
+        --sd         "${OUTPUT_DIR}/tiny_vae_sd.safetensors"   \
+        --sdxl       "${OUTPUT_DIR}/tiny_vae_sdxl.safetensors" \
+        --transcoder "${OUTPUT_DIR}/transcoder_from_sdxl_to_sd.safetensors"
+    "$BUILD_AUXILIARY" --color --output-dir "$OUTPUT_DIR" --float16 \
+        --sd         "${OUTPUT_DIR}/tiny_vae_sd.safetensors"   \
+        --sdxl       "${OUTPUT_DIR}/tiny_vae_sdxl.safetensors" \
+        --transcoder "${OUTPUT_DIR}/transcoder_from_sdxl_to_sd.safetensors"
+fi
+
+echo
 
