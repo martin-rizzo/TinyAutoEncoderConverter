@@ -559,7 +559,7 @@ def main(args: list=None, parent_script: str=None):
     output_file_path   = f"transcoder{blur}_from{from_latent_format}_to{to_latent_format}{dtype_name}.safetensors"
     if args.output_dir:
         if not os.path.exists(args.output_dir):
-            fatal_error("The specified output directory does not exist. '{args.output_dir}'")
+            fatal_error(f"The specified output directory does not exist. '{args.output_dir}'")
         output_file_path = os.path.join(args.output_dir, output_file_path)
     output_file_path   = find_unique_path(output_file_path)
 
